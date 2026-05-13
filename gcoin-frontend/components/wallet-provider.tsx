@@ -85,11 +85,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     toast.info("Connecting wallet...");
 
     try {
-      // ✅ FIXED: "Polygon" mainnet, not "Polygon Amoy"
-      const prov = new ethers.BrowserProvider(ethereum, {
-        name: "Polygon",
-        chainId: CHAIN_ID,
-      });
+      const prov = new ethers.BrowserProvider(ethereum);
 
       let accounts: string[];
       try {

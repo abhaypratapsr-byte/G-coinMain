@@ -72,10 +72,7 @@ export function useWallet() {
     toast.info("Connecting wallet...");
 
     try {
-      const prov = new ethers.BrowserProvider(ethereum, {
-        name: "Polygon",
-        chainId: CHAIN_ID,
-      });
+      const prov = new ethers.BrowserProvider(ethereum);
 
       const accounts = await prov.send("eth_requestAccounts", []);
       if (!accounts || accounts.length === 0) {
