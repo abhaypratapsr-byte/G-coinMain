@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   authors: [{ name: "GCoin Team" }],
   openGraph: {
     title: "GCoin — India's Digital Currency",
-    description: "1 GCoin = 1 INR. Seamless crypto-to-fiat on Polygon.",
+    description: "1 GCoin ~ 1 INR. Seamless crypto-to-fiat on Polygon.",
     type: "website",
   },
 };
