@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ShoppingCart, IndianRupee, ArrowRight, CheckCircle, Loader2, Zap, Shield } from "lucide-react";
+import { ShoppingCart, IndianRupee, ArrowRight, CheckCircle, Loader2, Zap, Shield, AlertTriangle, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,8 +13,14 @@ import { useWalletContext } from "@/components/wallet-provider";
 import { toast } from "sonner";
 import axios from "axios";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "";
-const API_URL = API_BASE ? (API_BASE.endsWith("/api") ? API_BASE : `${API_BASE}/api`) : "/api";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8002/api";
+
+// Load Cashfree JS SDK
+declare global {
+  interface Window {
+    Cashfree: any;
+  }
+}
 
 export function BuyGCoin() {
   const { address, refreshBalance } = useWalletContext();
@@ -23,8 +29,29 @@ export function BuyGCoin() {
   const [step, setStep] = useState<"input" | "confirm" | "processing" | "success">("input");
   const [orderId, setOrderId] = useState("");
   const [paymentSessionId, setPaymentSessionId] = useState("");
+  const [backendError, setBackendError] = useState<string | null>(null);
 
   const numAmount = parseFloat(amount) || 0;
+
+  // Load Cashfree SDK
+  const loadCashfreeSDK = useCallback(async () => {
+    if (window.Cashfree) return window.Cashfree;
+
+    return new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = "https://sdk.cashfree.com/js/v3/cashfree.js";
+      script.async = true;
+      script.onload = () => {
+        if (window.Cashfree) {
+          resolve(window.Cashfree);
+        } else {
+          reject(new Error("Cashfree SDK not loaded"));
+        }
+      };
+      script.onerror = () => reject(new Error("Failed to load Cashfree SDK"));
+      document.body.appendChild(script);
+    });
+  }, []);
 
   const createOrder = useCallback(async () => {
     if (!address || numAmount < 1) {
@@ -33,27 +60,46 @@ export function BuyGCoin() {
     }
 
     setLoading(true);
+    setBackendError(null);
+
     try {
-      const email = `user_${address.slice(2, 10)}@gcoin.app`;
-      const phone = "9999999999";
-      const res = await axios.post(`${API_URL}/api/payment/create-order`, {
+      const res = await axios.post(`${API_URL}/payment/create-order`, {
         amount: numAmount,
         wallet: address,
-        email,
-        phone,
+        customer_details: {
+          customer_id: address.slice(0, 20),
+          customer_email: "user@gcoin.in",
+          customer_phone: "9999999999",
+        }
+      }, {
+        timeout: 15000,
       });
 
-      const order = res.data?.order;
-      if (res.data.success && order?.id && order?.paymentSessionId) {
-        setOrderId(order.id);
-        setPaymentSessionId(order.paymentSessionId);
+      if (res.data.success && res.data.data) {
+        setOrderId(res.data.data.order_id);
+        setPaymentSessionId(res.data.data.payment_session_id);
         setStep("confirm");
         toast.success("Order created! Proceed to payment.");
-      } else {
-        throw new Error(res.data?.message || "Failed to create order");
       }
     } catch (err: any) {
-      toast.error(err.response?.data?.error || err.message || "Failed to create order");
+      console.error("Payment order error:", err);
+      
+      let errorMsg = "Failed to create order";
+      
+      if (err.code === "ECONNABORTED") {
+        errorMsg = "Backend timeout — your server might be sleeping";
+      } else if (err.response?.status === 404) {
+        errorMsg = `Backend API not found at ${API_URL}/payment/create-order`;
+      } else if (err.response?.status === 500) {
+        errorMsg = "Backend server error — check your backend logs";
+      } else if (!err.response) {
+        errorMsg = `Cannot reach backend at ${API_URL}`;
+      } else {
+        errorMsg = err.response?.data?.error || err.message;
+      }
+      
+      setBackendError(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -65,28 +111,60 @@ export function BuyGCoin() {
     setStep("processing");
     setLoading(true);
 
-    const script = document.createElement("script");
-    script.src = "https://sdk.cashfree.com/js/v2/cashfree.min.js";
-    script.async = true;
-    document.body.appendChild(script);
+    try {
+      const Cashfree = await loadCashfreeSDK();
+      
+      const env = process.env.NEXT_PUBLIC_CASHFREE_ENV === "production" ? "production" : "sandbox";
+      const cashfree = Cashfree({ mode: env });
 
-    script.onload = () => {
-      const cashfree = new (window as any).Cashfree({
-        mode: process.env.NODE_ENV === "production" ? "production" : "sandbox",
-      });
-
-      cashfree.checkout({
-        paymentSessionId,
+      const checkoutOptions = {
+        paymentSessionId: paymentSessionId,
         redirectTarget: "_self",
-      });
-    };
+        returnUrl: `${window.location.origin}/?order_id=${orderId}`,
+      };
 
-    script.onerror = () => {
-      toast.error("Failed to load payment gateway");
+      cashfree.checkout(checkoutOptions).then(async (result: any) => {
+        if (result.error) {
+          toast.error(result.error.message || "Payment failed");
+          setStep("confirm");
+          setLoading(false);
+          return;
+        }
+        
+        if (result.redirect) {
+          console.log("Redirecting to Cashfree checkout...");
+        }
+      });
+
+      // Verify payment
+      try {
+        const verifyRes = await axios.post(`${API_URL}/payment/verify-payment`, {
+          order_id: orderId,
+          wallet: address,
+          amount: numAmount,
+        }, { timeout: 15000 });
+
+        if (verifyRes.data.success) {
+          setStep("success");
+          toast.success(`Successfully bought ${numAmount} GCoin!`);
+          await refreshBalance();
+          setTimeout(() => {
+            setStep("input");
+            setAmount("");
+            setOrderId("");
+            setPaymentSessionId("");
+            setBackendError(null);
+          }, 3000);
+        }
+      } catch (verifyErr: any) {
+        console.log("Verification pending:", verifyErr);
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to initialize payment");
       setStep("confirm");
       setLoading(false);
-    };
-  }, [paymentSessionId, address]);
+    }
+  }, [paymentSessionId, orderId, address, numAmount, refreshBalance, loadCashfreeSDK]);
 
   return (
     <motion.div
@@ -106,13 +184,38 @@ export function BuyGCoin() {
               </div>
               <div>
                 <CardTitle className="text-lg">Buy GCoin</CardTitle>
-                <CardDescription>Purchase with INR via Razorpay</CardDescription>
+                <CardDescription>Purchase with INR via Cashfree</CardDescription>
               </div>
             </div>
             <Badge variant="success" className="text-xs">1:1 INR</Badge>
           </div>
         </CardHeader>
         <CardContent>
+          {backendError && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              className="mb-4 p-3 rounded-lg bg-destructive/10 border border-destructive/20 flex items-start gap-2"
+            >
+              <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm text-destructive font-medium">Backend Error</p>
+                <p className="text-xs text-destructive/80 mt-0.5">{backendError}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  API URL: <code className="bg-black/20 px-1 rounded">{API_URL}</code>
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 shrink-0"
+                onClick={() => setBackendError(null)}
+              >
+                <RefreshCw className="w-3 h-3" />
+              </Button>
+            </motion.div>
+          )}
+
           <AnimatePresence mode="wait">
             {step === "input" && (
               <motion.div
@@ -130,14 +233,14 @@ export function BuyGCoin() {
                       type="number"
                       placeholder="Enter amount"
                       value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
+                      onChange={(e) => { setAmount(e.target.value); setBackendError(null); }}
                       className="pl-10 h-12 text-lg font-semibold"
                       min={1}
                     />
                   </div>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Shield className="w-3 h-3" />
-                    <span>Secured by Razorpay</span>
+                    <span>Secured by Cashfree Payments</span>
                   </div>
                 </div>
 
@@ -207,6 +310,10 @@ export function BuyGCoin() {
                     <span className="text-muted-foreground">Wallet</span>
                     <span className="font-mono text-xs">{address?.slice(0, 6)}...{address?.slice(-4)}</span>
                   </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Payment Gateway</span>
+                    <span className="font-medium">Cashfree</span>
+                  </div>
                 </div>
 
                 <div className="flex gap-3">
@@ -241,7 +348,7 @@ export function BuyGCoin() {
                   <div className="absolute inset-0 border-4 border-gcoin-500 border-t-transparent rounded-full animate-spin" />
                 </div>
                 <h3 className="text-lg font-semibold">Processing Payment</h3>
-                <p className="text-sm text-muted-foreground">Please complete the payment in the Razorpay window</p>
+                <p className="text-sm text-muted-foreground">Redirecting to Cashfree checkout...</p>
                 <Progress value={60} className="w-full" />
               </motion.div>
             )}

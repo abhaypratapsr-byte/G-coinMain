@@ -15,10 +15,9 @@ const CONTRACT_ABI = [
   "event Transfer(address indexed from, address indexed to, uint256 value)",
 ];
 
-// ✅ FIXED: Mainnet values
-const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "0xdED4FD10426CD1DC53d2e98b51eDbB114C638aB2";
-const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL || "https://polygon-rpc.com";
-const CHAIN_ID = parseInt(process.env.NEXT_PUBLIC_CHAIN_ID || "137");
+const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "0xa08862c6eaBBF4a8527B1C7abd9E3FE38A2d943f";
+const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL || "https://rpc-amoy.polygon.technology";
+const CHAIN_ID = parseInt(process.env.NEXT_PUBLIC_CHAIN_ID || "80002");
 
 interface WalletContextType extends WalletState {
   provider: ethers.BrowserProvider | null;
@@ -51,8 +50,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       const ctr = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, prov);
-      const bal = await (ctr as any).balanceOf(address);
-      const decimals = await (ctr as any).decimals();
+      const bal = await ctr.balanceOf(address);
+      const decimals = await ctr.decimals();
       const formatted = ethers.formatUnits(bal, decimals);
       setState((prev) => ({ ...prev, balance: formatted }));
     } catch (err: any) {
@@ -68,7 +67,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     }
 
     const ethereum = (window as any).ethereum;
-
+    
     if (!ethereum) {
       toast.error("No wallet detected", {
         description: "Please install MetaMask or another Web3 wallet extension.",
@@ -77,7 +76,6 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
           onClick: () => window.open("https://metamask.io/download/", "_blank"),
         },
       });
-      setState((prev) => ({ ...prev, error: "No wallet detected" }));
       return;
     }
 
@@ -85,7 +83,10 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     toast.info("Connecting wallet...");
 
     try {
-      const prov = new ethers.BrowserProvider(ethereum);
+      const prov = new ethers.BrowserProvider(ethereum, {
+        name: "Polygon Amoy",
+        chainId: CHAIN_ID,
+      });
 
       let accounts: string[];
       try {
@@ -107,12 +108,11 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       const chainId = Number(network.chainId);
 
       if (chainId !== CHAIN_ID) {
-        // ✅ FIXED: "Polygon Mainnet" not "Polygon Amoy"
-        toast.info("Switching network to Polygon Mainnet...");
+        toast.info("Switching network to Polygon Amoy...");
         try {
           await ethereum.request({
             method: "wallet_switchEthereumChain",
-            params: [{ chainId: "0x89" }], // ✅ hardcoded mainnet hex
+            params: [{ chainId: `0x${CHAIN_ID.toString(16)}` }],
           });
         } catch (switchError: any) {
           if (switchError.code === 4902) {
@@ -121,15 +121,15 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
                 method: "wallet_addEthereumChain",
                 params: [
                   {
-                    chainId: "0x89",                              // ✅ mainnet
-                    chainName: "Polygon Mainnet",                 // ✅ mainnet
+                    chainId: `0x${CHAIN_ID.toString(16)}`,
+                    chainName: "Polygon Amoy Testnet",
                     nativeCurrency: { name: "MATIC", symbol: "MATIC", decimals: 18 },
                     rpcUrls: [RPC_URL],
-                    blockExplorerUrls: ["https://polygonscan.com"], // ✅ mainnet explorer
+                    blockExplorerUrls: ["https://amoy.polygonscan.com"],
                   },
                 ],
               });
-              toast.success("Polygon Mainnet added to your wallet!");
+              toast.success("Polygon Amoy added to your wallet!");
             } catch (addError: any) {
               toast.error("Failed to add network", { description: addError.message });
               throw addError;
@@ -146,14 +146,14 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
       const address = accounts[0];
       setProvider(prov);
-
+      
       const ctr = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, prov);
       setContract(ctr);
 
       setState({
         address,
         balance: "0",
-        chainId: CHAIN_ID,
+        chainId,
         isConnecting: false,
         isConnected: true,
         error: null,
@@ -207,12 +207,12 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
           await connect();
         }
       } catch {
-        // silent fail
+        // Silent fail
       }
     };
 
     checkConnection();
-  }, []); // ✅ FIXED: removed connect from deps to prevent infinite loop
+  }, [connect]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
