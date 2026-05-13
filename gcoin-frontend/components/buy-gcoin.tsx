@@ -36,7 +36,7 @@ export function BuyGCoin() {
     try {
       const email = `user_${address.slice(2, 10)}@gcoin.app`;
       const phone = "9999999999";
-      const res = await axios.post(`${API_URL}/payment/create-order`, {
+      const res = await axios.post(`${API_URL}/api/payment/create-order`, {
         amount: numAmount,
         wallet: address,
         email,
