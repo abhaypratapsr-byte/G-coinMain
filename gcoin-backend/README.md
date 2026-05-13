@@ -28,7 +28,7 @@ In Railway dashboard → Variables → Raw Editor, paste:
 
 ```env
 MONGODB_URI=mongodb://gcoin_admin:Gcoin%4012345@ac-ryota5o-shard-00-00.axy02uc.mongodb.net:27017,ac-ryota5o-shard-00-01.axy02uc.mongodb.net:27017,ac-ryota5o-shard-00-02.axy02uc.mongodb.net:27017/?ssl=true&replicaSet=atlas-11mnu2-shard-0&authSource=admin&retryWrites=true&w=majority&appName=Cluster0
-RPC=https://rpc-amoy.polygon.technology
+RPC=https://polygon-rpc.com
 PRIVATE_KEY=3b88e27e1e99e0ed0cdff8a2d3b00dd1681ae69983628ae1f1478d951f2006c8
 CONTRACT=0xa08862c6eaBBF4a8527B1C7abd9E3FE38A2d943f
 RAZORPAY_KEY=rzp_test_STwx0saGKQbjnX

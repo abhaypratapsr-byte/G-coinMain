@@ -53,7 +53,7 @@ function TransactionItem({ tx, index }: { tx: Transaction; index: number }) {
             <>
               <span>·</span>
               <a
-                href={`https://amoy.polygonscan.com/tx/${tx.txHash}`}
+                href={`https://polygonscan.com/tx/${tx.txHash}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-0.5 hover:text-gcoin-400 transition-colors"

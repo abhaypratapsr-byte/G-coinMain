@@ -19,7 +19,7 @@ export const WalletConnection = ({
       </div>
       <div className="connect-copy">
         <div className="connect-heading">Connect your wallet</div>
-        <div className="connect-sub">Link MetaMask on Polygon Amoy to mint or redeem GCoin</div>
+        <div className="connect-sub">Link MetaMask on Polygon Mainnet to mint or redeem GCoin</div>
       </div>
       <button className="btn-connect" onClick={onConnect} disabled={isConnecting}>
         {isConnecting ? (

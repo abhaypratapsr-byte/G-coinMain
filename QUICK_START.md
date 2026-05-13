@@ -141,10 +141,10 @@ yarn install
 
 ### Can't connect wallet
 - Ensure MetaMask is installed
-- Switch to Polygon Amoy Testnet (Chain ID: 80002)
+- Switch to Polygon Mainnet (Chain ID: 137)
 - Add network if not present:
-  - RPC: `https://rpc-amoy.polygon.technology`
-  - Chain ID: `80002`
+  - RPC: `https://polygon-rpc.com`
+  - Chain ID: `137`
   - Currency: `MATIC`
 
 ### Transaction failed

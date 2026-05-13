@@ -1,8 +1,8 @@
 // ─── Constants ─────────────────────────────────────────────────────────────────
 export const CONTRACT_ADDRESS = "0xa08862c6eaBBF4a8527B1C7abd9E3FE38A2d943f"
 export const RAZORPAY_KEY = "rzp_test_STwx0saGKQbjnX"
-export const AMOY_CHAIN_ID = "0x13882"
-export const AMOY_CHAIN_ID_DECIMAL = 80002
+export const POLYGON_CHAIN_ID = "0x89"
+export const POLYGON_CHAIN_ID_DECIMAL = 137
 
 // Error codes
 export const ERROR_CODE_USER_REJECTED = 4001
@@ -17,12 +17,16 @@ export const REDEEM_SUCCESS_DURATION = 3000
 export const ERROR_TIMEOUT = 4000
 
 // Network configuration
-export const AMOY_NETWORK_CONFIG = {
-  chainId: AMOY_CHAIN_ID,
-  chainName: "Polygon Amoy Testnet",
-  nativeCurrency: { name: "MATIC", symbol: "MATIC", decimals: 18 },
-  rpcUrls: ["https://rpc-amoy.polygon.technology"],
-  blockExplorerUrls: ["https://amoy.polygonscan.com"],
+export const POLYGON_NETWORK_CONFIG = {
+  chainId: POLYGON_CHAIN_ID,
+  chainName: "Polygon Mainnet",
+  nativeCurrency: {
+    name: "MATIC",
+    symbol: "MATIC",
+    decimals: 18
+  },
+  rpcUrls: ["https://polygon-rpc.com"],
+  blockExplorerUrls: ["https://polygonscan.com"],
 }
 
 // Quick amount options

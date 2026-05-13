@@ -34,7 +34,7 @@ export default function GCoinPortal() {
     wrongNetwork, 
     setWrongNetwork,
     connectWallet: connectWalletHook, 
-    switchToAmoy 
+    switchToMainnet 
   } = useWallet()
   
   const { 
@@ -102,7 +102,7 @@ export default function GCoinPortal() {
       const address = await connectWalletHook()
       const result = await fetchBalance(address)
       if (result?.wrongNetwork) {
-        setStatusMsg("Wrong network — switch to Polygon Amoy Testnet")
+        setStatusMsg("Wrong network — switch to Polygon Mainnet")
       }
       await fetchRedeemHistory(address)
       setStatusMsg("")
@@ -242,7 +242,7 @@ export default function GCoinPortal() {
       return
     }
     if (wrongNetwork) {
-      setStatusMsg("Switch to Polygon Amoy Testnet first")
+      setStatusMsg("Switch to Polygon Mainnet first")
       return
     }
     if (!amount || Number(amount) <= 0) {
@@ -350,9 +350,9 @@ export default function GCoinPortal() {
 
           <div className={`network-pill ${wrongNetwork ? "net-wrong" : ""}`}>
             <span className="net-dot" />
-            <span>{wrongNetwork ? "Wrong Network" : "Polygon Amoy"}</span>
+            <span>{wrongNetwork ? "Wrong Network" : "Polygon Mainnet"}</span>
             {wrongNetwork && (
-              <button className="net-switch-btn" onClick={switchToAmoy}>Switch</button>
+              <button className="net-switch-btn" onClick={switchToMainnet}>Switch</button>
             )}
           </div>
         </div>
@@ -396,7 +396,7 @@ export default function GCoinPortal() {
               <circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/>
             </svg>
             <span>MetaMask is on the wrong network.</span>
-            <button className="net-banner-btn" onClick={switchToAmoy}>Switch to Amoy →</button>
+            <button className="net-banner-btn" onClick={switchToMainnet}>Switch to Mainnet →</button>
           </div>
         )}
 
@@ -413,7 +413,7 @@ export default function GCoinPortal() {
                 <div className="account-avatar">{wallet.slice(2, 4).toUpperCase()}</div>
                 <div>
                   <div className="account-addr">{formatWallet(wallet)}</div>
-                  <div className="account-net">Polygon Amoy Testnet</div>
+                  <div className="account-net">Polygon Mainnet</div>
                 </div>
               </div>
               <button

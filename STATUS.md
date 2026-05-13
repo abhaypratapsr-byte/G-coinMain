@@ -7,7 +7,7 @@
 - **Status**: ✅ Running
 - **Health**: `/api/health` returns OK
 - **Database**: MongoDB connected
-- **Blockchain**: Connected to Polygon Amoy (Chain ID: 80002)
+- **Blockchain**: Connected to Polygon Mainnet (Chain ID: 137)
 - **Wallet**: `0xA8F9f6Bc7aDc2BD0750F2a9c576823EF54aCBF71`
 - **Contract**: `0xa08862c6eaBBF4a8527B1C7abd9E3FE38A2d943f`
 
@@ -69,9 +69,9 @@ curl http://localhost:8002/
 ## 🔑 Current Configuration
 
 ### Network
-- **Blockchain**: Polygon Amoy Testnet
-- **Chain ID**: 80002
-- **RPC**: `https://rpc-amoy.polygon.technology`
+- **Blockchain**: Polygon Mainnet
+- **Chain ID**: 137
+- **RPC**: `https://polygon-rpc.com`
 
 ### Razorpay
 - **Mode**: Test
@@ -143,8 +143,8 @@ curl http://localhost:8002/
 ## 🚀 Next Steps
 
 ### 1. Manual Testing (Required)
-- Connect MetaMask to Polygon Amoy testnet
-- Get test MATIC from faucet
+- Connect MetaMask to Polygon Mainnet
+- Get mainnet MATIC from your wallet provider
 - Test complete buy → transfer → redeem flow
 
 ### 2. Deployment Preparation
@@ -244,13 +244,13 @@ OTP: 1234
 ### Get Test MATIC
 https://faucet.polygon.technology/
 
-### Add Polygon Amoy to MetaMask
+### Add Polygon Mainnet to MetaMask
 ```
-Network Name: Polygon Amoy Testnet
-RPC URL: https://rpc-amoy.polygon.technology
-Chain ID: 80002
+Network Name: Polygon Mainnet
+RPC URL: https://polygon-rpc.com
+Chain ID: 137
 Currency: MATIC
-Block Explorer: https://amoy.polygonscan.com/
+Block Explorer: https://polygonscan.com/
 ```
 
 ---

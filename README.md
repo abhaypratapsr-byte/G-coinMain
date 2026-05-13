@@ -42,7 +42,7 @@ Complete production-ready platform for GCoin, an INR-backed stablecoin on Polygo
 
 - **Frontend**: Next.js 14, TypeScript, Tailwind CSS
 - **Backend**: Node.js, Express, MongoDB
-- **Blockchain**: Polygon (Amoy Testnet), Ethers.js v6
+- **Blockchain**: Polygon Mainnet, Ethers.js v6
 - **Payment**: Razorpay (Orders, Payments, Payouts)
 
 ---
@@ -107,7 +107,7 @@ Admin panel runs on: `http://localhost:3001`
 ### Backend (`.env`)
 ```env
 # Blockchain
-RPC_URL=https://rpc-amoy.polygon.technology
+RPC_URL=https://polygon-rpc.com
 PRIVATE_KEY=your_wallet_private_key
 CONTRACT_ADDRESS=0xa08862c6eaBBF4a8527B1C7abd9E3FE38A2d943f
 
@@ -132,8 +132,8 @@ NODE_ENV=production
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:8002/api
 NEXT_PUBLIC_CONTRACT_ADDRESS=0xa08862c6eaBBF4a8527B1C7abd9E3FE38A2d943f
-NEXT_PUBLIC_RPC_URL=https://rpc-amoy.polygon.technology
-NEXT_PUBLIC_CHAIN_ID=80002
+NEXT_PUBLIC_RPC_URL=https://polygon-rpc.com
+NEXT_PUBLIC_CHAIN_ID=137
 NEXT_PUBLIC_RAZORPAY_KEY=rzp_test_xxx
 ```
 
@@ -349,7 +349,7 @@ To move from testnet to mainnet:
 
 ## 📝 Notes
 
-- **Current Network**: Polygon Amoy Testnet (Chain ID: 80002)
+- **Current Network**: Polygon Mainnet (Chain ID: 137)
 - **1 GCoin = 1 INR** (1:1 peg)
 - Minimum redeem: ₹100
 - Backend port: 8002 (default FastAPI on 8001)

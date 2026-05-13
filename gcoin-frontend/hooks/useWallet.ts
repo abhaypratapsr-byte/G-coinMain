@@ -16,8 +16,8 @@ const CONTRACT_ABI = [
 ];
 
 const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "0xa08862c6eaBBF4a8527B1C7abd9E3FE38A2d943f";
-const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL || "https://rpc-amoy.polygon.technology";
-const CHAIN_ID = parseInt(process.env.NEXT_PUBLIC_CHAIN_ID || "80002");
+const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL || "https://polygon-rpc.com";
+const CHAIN_ID = parseInt(process.env.NEXT_PUBLIC_CHAIN_ID || "137");
 
 export function useWallet() {
   const [state, setState] = useState<WalletState>({
@@ -73,7 +73,7 @@ export function useWallet() {
 
     try {
       const prov = new ethers.BrowserProvider(ethereum, {
-        name: "Polygon Amoy",
+        name: "Polygon",
         chainId: CHAIN_ID,
       });
 
@@ -86,7 +86,7 @@ export function useWallet() {
       const chainId = Number(network.chainId);
 
       if (chainId !== CHAIN_ID) {
-        toast.info("Switching network to Polygon Amoy...");
+        toast.info("Switching network to Polygon Mainnet...");
         try {
           await ethereum.request({
             method: "wallet_switchEthereumChain",
@@ -99,14 +99,14 @@ export function useWallet() {
               params: [
                 {
                   chainId: `0x${CHAIN_ID.toString(16)}`,
-                  chainName: "Polygon Amoy Testnet",
+                  chainName: "Polygon Mainnet",
                   nativeCurrency: { name: "MATIC", symbol: "MATIC", decimals: 18 },
                   rpcUrls: [RPC_URL],
-                  blockExplorerUrls: ["https://amoy.polygonscan.com"],
+                  blockExplorerUrls: ["https://polygonscan.com"],
                 },
               ],
             });
-            toast.success("Polygon Amoy added!");
+            toast.success("Polygon Mainnet added!");
           } else {
             throw switchError;
           }

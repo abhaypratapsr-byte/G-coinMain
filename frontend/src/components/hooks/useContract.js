@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react"
 import { ethers } from "ethers"
-import { CONTRACT_ADDRESS, AMOY_CHAIN_ID } from "../constants"
+import { CONTRACT_ADDRESS, POLYGON_CHAIN_ID } from "../constants"
 
 export const useContract = (abiJson) => {
   const [balance, setBalance] = useState("0.00")
@@ -15,7 +15,7 @@ export const useContract = (abiJson) => {
       const network = await provider.getNetwork()
       const chainHex = "0x" + network.chainId.toString(16)
 
-      if (chainHex !== AMOY_CHAIN_ID) {
+      if (chainHex !== POLYGON_CHAIN_ID) {
         setBalance("0.00")
         return { wrongNetwork: true }
       }

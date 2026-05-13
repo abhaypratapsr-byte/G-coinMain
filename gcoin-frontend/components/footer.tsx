@@ -44,7 +44,7 @@ export function Footer() {
             <ul className="space-y-2.5">
               {[
                 { label: "Documentation", href: "#" },
-                { label: "Smart Contract", href: "https://amoy.polygonscan.com" },
+                { label: "Smart Contract", href: "https://polygonscan.com" },
                 { label: "API Reference", href: "#" },
                 { label: "Status", href: "#" },
               ].map((item) => (
@@ -82,7 +82,7 @@ export function Footer() {
               ))}
             </div>
             <p className="mt-4 text-xs text-muted-foreground">
-              Built on Polygon Amoy Testnet
+              Built on Polygon Mainnet
             </p>
           </div>
         </div>

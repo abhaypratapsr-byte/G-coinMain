@@ -1,10 +1,10 @@
 import { useState, useCallback, useEffect } from "react"
 import { ethers } from "ethers"
 import { 
-  AMOY_CHAIN_ID, 
+  POLYGON_CHAIN_ID, 
   ERROR_CODE_USER_REJECTED,
   ERROR_CODE_CHAIN_NOT_ADDED,
-  AMOY_NETWORK_CONFIG 
+  POLYGON_NETWORK_CONFIG 
 } from "../constants"
 
 export const useWallet = () => {
@@ -33,19 +33,19 @@ export const useWallet = () => {
     }
   }, [])
 
-  const switchToAmoy = useCallback(async () => {
+  const switchToMainnet = useCallback(async () => {
     if (!window.ethereum) return
     
     try {
       await window.ethereum.request({
         method: "wallet_switchEthereumChain",
-        params: [{ chainId: AMOY_CHAIN_ID }],
+        params: [{ chainId: POLYGON_CHAIN_ID }],
       })
     } catch (err) {
       if (err.code === ERROR_CODE_CHAIN_NOT_ADDED) {
         await window.ethereum.request({
           method: "wallet_addEthereumChain",
-          params: [AMOY_NETWORK_CONFIG],
+          params: [POLYGON_NETWORK_CONFIG],
         })
       }
     }
@@ -58,7 +58,7 @@ export const useWallet = () => {
       const provider = new ethers.BrowserProvider(window.ethereum)
       const network = await provider.getNetwork()
       const chainHex = "0x" + network.chainId.toString(16)
-      setWrongNetwork(chainHex !== AMOY_CHAIN_ID)
+      setWrongNetwork(chainHex !== POLYGON_CHAIN_ID)
     } catch (err) {
       if (process.env.NODE_ENV !== 'production') {
         console.error("Network check error:", err)
@@ -73,7 +73,7 @@ export const useWallet = () => {
     wrongNetwork,
     setWrongNetwork,
     connectWallet,
-    switchToAmoy,
+    switchToMainnet,
     checkNetwork
   }
 }

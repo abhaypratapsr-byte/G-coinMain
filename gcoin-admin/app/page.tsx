@@ -749,7 +749,7 @@ function DashboardTab({ stats, loading, onRefresh }: {
         <div>
           <p className="sec-eyebrow">Overview</p>
           <h2 className="sec-h">Platform Metrics</h2>
-          <p className="sec-sub">Live GCoin ecosystem data · Polygon Amoy Testnet</p>
+          <p className="sec-sub">Live GCoin ecosystem data · Polygon Mainnet</p>
         </div>
         <button className="btn-ghost" onClick={onRefresh}>
           <RefreshCw size={13} className={loading ? 'spin' : ''} /> Refresh
@@ -774,7 +774,7 @@ function DashboardTab({ stats, loading, onRefresh }: {
             <span style={{ fontFamily: 'var(--font-ui)', fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>System Status</span>
           </div>
           {[
-            { label: 'Polygon Amoy',   status: 'online',     color: 'var(--teal)' },
+            { label: 'Polygon Mainnet',   status: 'online',     color: 'var(--teal)' },
             { label: 'Smart Contract', status: 'active',     color: 'var(--teal)' },
             { label: 'Backend API',    status: 'running',    color: 'var(--blue)' },
             { label: 'MongoDB',        status: 'connected',  color: 'var(--teal)' },
@@ -1026,7 +1026,7 @@ function TransfersTab({ transfers, totalCount, loading, search, setSearch, page,
         <div>
           <p className="sec-eyebrow">On-Chain</p>
           <h2 className="sec-h">P2P Transfers</h2>
-          <p className="sec-sub">{totalCount} transfer{totalCount !== 1 ? 's' : ''} on Polygon Amoy</p>
+          <p className="sec-sub">{totalCount} transfer{totalCount !== 1 ? 's' : ''} on Polygon Mainnet</p>
         </div>
         <div className="search-wrap">
           <Search size={13} color="var(--text3)" />
@@ -1454,7 +1454,7 @@ export default function AdminPage() {
               <p style={{ fontSize: 12, color: 'var(--text2)', marginTop: 5 }}>Stablecoin Management Portal</p>
               <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text3)' }}>
                 <Globe size={11} />
-                Polygon Amoy · 0xa088…943f
+                Polygon Mainnet · 0xa088…943f
               </div>
             </div>
 
@@ -1550,10 +1550,10 @@ export default function AdminPage() {
           <div style={{ padding: '8px 12px', borderRadius: 10, background: 'var(--surface2)', border: '1px solid var(--border)', margin: '0 0 2px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
               <div style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--teal)', boxShadow: '0 0 5px var(--teal)', animation: 'blink 2s ease infinite' }} />
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '9.5px', color: 'var(--teal)', fontWeight: 600 }}>POLYGON AMOY</span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '9.5px', color: 'var(--teal)', fontWeight: 600 }}>POLYGON MAINNET</span>
             </div>
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'var(--text3)', lineHeight: 1.5 }}>
-              Chain ID: 80002<br />
+              Chain ID: 137<br />
               Contract: 0xa088…943f
             </div>
           </div>
