@@ -14,11 +14,17 @@ const cashfree = new Cashfree(
 
 router.post('/create-order', async (req, res) => {
   try {
-    const { wallet, amount, email, phone } = req.body;
+    const { wallet, amount } = req.body;
+    let { email, phone } = req.body;
     if (!wallet || !amount || amount <= 0)
       return res.status(400).json({ success: false, message: 'Wallet and amount are required' });
-    if (!email || !phone)
-      return res.status(400).json({ success: false, message: 'Email and phone are required' });
+
+    if (!email) {
+      email = `user_${wallet.slice(2, 10)}@gcoin.app`;
+    }
+    if (!phone) {
+      phone = '9999999999';
+    }
 
     const orderId = `gcoin_${Date.now()}`;
     const payload = {
@@ -58,13 +64,18 @@ router.post('/create-order', async (req, res) => {
       { upsert: true, new: true }
     );
 
+    const orderData = {
+      id: cfData.order_id,
+      amount: cfData.order_amount,
+      currency: cfData.order_currency,
+      paymentSessionId: cfData.payment_session_id
+    };
+
     return res.json({
       success: true,
-      order: {
-        id: cfData.order_id,
-        amount: cfData.order_amount,
-        currency: cfData.order_currency,
-        paymentSessionId: cfData.payment_session_id
+      order: orderData,
+      data: {
+        order: orderData
       }
     });
   } catch (error) {
@@ -157,6 +168,20 @@ router.post("/verify-cashfree", async (req, res) => {
   } catch (err) {
     console.error("Verify error:", err.message);
     return res.status(500).json({ success: false });
+  }
+});
+
+router.post('/verify-payment', async (req, res) => {
+  try {
+    const orderId = req.body.orderId || req.body.razorpay_order_id;
+    if (!orderId) {
+      return res.status(400).json({ success: false, message: 'orderId is required' });
+    }
+    req.body.orderId = orderId;
+    return router.handle(req, res);
+  } catch (err) {
+    console.error('Verify payment alias error:', err.message);
+    return res.status(500).json({ success: false, message: 'Verify payment failed' });
   }
 });
 

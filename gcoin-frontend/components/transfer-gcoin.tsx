@@ -13,7 +13,8 @@ import { toast } from "sonner";
 import { ethers } from "ethers";
 import axios from "axios";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8002/api";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "";
+const API_URL = API_BASE ? (API_BASE.endsWith("/api") ? API_BASE : `${API_BASE}/api`) : "/api";
 
 export function TransferGCoin() {
   const { address, balance, contract, provider, refreshBalance } = useWalletContext();

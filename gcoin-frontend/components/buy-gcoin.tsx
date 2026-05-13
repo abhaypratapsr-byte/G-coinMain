@@ -13,7 +13,8 @@ import { useWalletContext } from "@/components/wallet-provider";
 import { toast } from "sonner";
 import axios from "axios";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8002/api";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "";
+const API_URL = API_BASE ? (API_BASE.endsWith("/api") ? API_BASE : `${API_BASE}/api`) : "/api";
 
 export function BuyGCoin() {
   const { address, refreshBalance } = useWalletContext();
@@ -21,6 +22,7 @@ export function BuyGCoin() {
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<"input" | "confirm" | "processing" | "success">("input");
   const [orderId, setOrderId] = useState("");
+  const [paymentSessionId, setPaymentSessionId] = useState("");
 
   const numAmount = parseFloat(amount) || 0;
 
@@ -32,86 +34,51 @@ export function BuyGCoin() {
 
     setLoading(true);
     try {
+      const email = `user_${address.slice(2, 10)}@gcoin.app`;
+      const phone = "9999999999";
       const res = await axios.post(`${API_URL}/payment/create-order`, {
         amount: numAmount,
         wallet: address,
+        email,
+        phone,
       });
 
-      if (res.data.success && res.data.data) {
-        setOrderId(res.data.data.id);
+      const order = res.data?.order;
+      if (res.data.success && order?.id && order?.paymentSessionId) {
+        setOrderId(order.id);
+        setPaymentSessionId(order.paymentSessionId);
         setStep("confirm");
         toast.success("Order created! Proceed to payment.");
+      } else {
+        throw new Error(res.data?.message || "Failed to create order");
       }
     } catch (err: any) {
-      toast.error(err.response?.data?.error || "Failed to create order");
+      toast.error(err.response?.data?.error || err.message || "Failed to create order");
     } finally {
       setLoading(false);
     }
   }, [address, numAmount]);
 
   const handlePayment = useCallback(async () => {
-    if (!orderId || !address) return;
+    if (!paymentSessionId || !address) return;
 
     setStep("processing");
     setLoading(true);
 
-    // Load Razorpay script dynamically
     const script = document.createElement("script");
-    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.src = "https://sdk.cashfree.com/js/v2/cashfree.min.js";
     script.async = true;
     document.body.appendChild(script);
 
     script.onload = () => {
-      const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY,
-        amount: numAmount * 100,
-        currency: "INR",
-        name: "GCoin",
-        description: `Buy ${numAmount} GCoin`,
-        order_id: orderId,
-        handler: async (response: any) => {
-          try {
-            const verifyRes = await axios.post(`${API_URL}/payment/verify-payment`, {
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-              wallet: address,
-              amount: numAmount,
-            });
+      const cashfree = new (window as any).Cashfree({
+        mode: process.env.NODE_ENV === "production" ? "production" : "sandbox",
+      });
 
-            if (verifyRes.data.success) {
-              setStep("success");
-              toast.success(`Successfully bought ${numAmount} GCoin!`);
-              await refreshBalance();
-              setTimeout(() => {
-                setStep("input");
-                setAmount("");
-                setOrderId("");
-              }, 3000);
-            }
-          } catch (err: any) {
-            toast.error(err.response?.data?.error || "Payment verification failed");
-            setStep("confirm");
-          }
-        },
-        prefill: {
-          name: "GCoin User",
-          email: "user@gcoin.in",
-        },
-        theme: {
-          color: "#22c55e",
-        },
-        modal: {
-          ondismiss: () => {
-            setLoading(false);
-            setStep("confirm");
-          },
-        },
-      };
-
-      // @ts-ignore
-      const rzp = new window.Razorpay(options);
-      rzp.open();
+      cashfree.checkout({
+        paymentSessionId,
+        redirectTarget: "_self",
+      });
     };
 
     script.onerror = () => {
@@ -119,7 +86,7 @@ export function BuyGCoin() {
       setStep("confirm");
       setLoading(false);
     };
-  }, [orderId, address, numAmount, refreshBalance]);
+  }, [paymentSessionId, address]);
 
   return (
     <motion.div
