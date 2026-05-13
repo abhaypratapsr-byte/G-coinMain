@@ -1,0 +1,9 @@
+.exit
+await g.name()
+const g = await GCoin.attach("0xCcAe191Eee8EF1991179757e642e0448fA6a4c78")
+const GCoin = await ethers.getContractFactory("GCoin")
+exit
+.exit
+await gcoin.owner()
+const gcoin = await GCoin.attach("0xCcAe191Eee8EF1991179757e642e0448fA6a4c78")
+const GCoin = await ethers.getContractFactory("GCoin")

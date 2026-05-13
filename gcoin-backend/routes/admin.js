@@ -8,9 +8,10 @@ const User = require('../models/User');
 const blockchainService = require('../services/blockchain');
 const payoutService = require('../services/payout');
 const { adminAuth } = require('../middleware/auth');
-const payoutQueue = require('../queues/queue');
-const mintQueue = require('../queues/mintQueue');
-
+// const payoutQueue = require('../queues/queue');
+// const mintQueue = require('../queues/mintQueue');
+const MintLedger   = require('../middleware/MintLedger');
+const RedeemLedger = require('../middleware/RedeemLedger');
 
 router.post('/login', (req, res) => {
   const { key } = req.body;
@@ -168,22 +169,22 @@ redeem.paymentRef = paymentRef;
 await redeem.save();
 
 
-await payoutQueue.add(
-  'payout',
-  {
-    redeemId: redeem._id,
-    wallet: redeem.wallet,
-    amount: redeem.amount,
-    bankDetails: redeem.bankDetails
-  },
-  {
-    attempts: 5,
-    backoff: {
-      type: 'exponential',
-      delay: 5000
-    }
-  }
-);
+// await payoutQueue.add(
+//   'payout',
+//   {
+//     redeemId: redeem._id,
+//     wallet: redeem.wallet,
+//     amount: redeem.amount,
+//     bankDetails: redeem.bankDetails
+//   },
+//   {
+//     attempts: 5,
+//     backoff: {
+//       type: 'exponential',
+//       delay: 5000
+//     }
+//   }
+// );
     // ✅ Audit log
     const AuditLog = require('../models/AuditLog');
     await AuditLog.create({
@@ -297,6 +298,36 @@ router.post('/retry-mint/:id', async (req, res) => {
   });
 
   res.json({ success: true });
+});
+
+
+router.get('/reconcile', async (req, res) => {
+  try {
+    const [inr, gcn] = await Promise.all([
+      MintLedger.aggregate([{ $match: { status: 'minted' } }, { $group: { _id: null, total: { $sum: '$amountINR' } } }]),
+      RedeemLedger.aggregate([{ $match: { status: 'paid' } }, { $group: { _id: null, total: { $sum: '$amountINR' } } }]),
+    ]);
+    const totalMinted   = inr[0]?.total || 0;
+    const totalRedeemed = gcn[0]?.total || 0;
+    const outstanding   = totalMinted - totalRedeemed;
+    res.json({ totalMinted, totalRedeemed, outstanding, balanced: Math.abs(outstanding) < 1 });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.patch('/redeem/:id/paid', async (req, res) => {
+  try {
+    const { payoutRef } = req.body;
+    const doc = await RedeemLedger.findByIdAndUpdate(
+      req.params.id,
+      { status: 'paid', payoutRef, paidAt: new Date() },
+      { new: true }
+    );
+    res.json(doc);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 module.exports = router;

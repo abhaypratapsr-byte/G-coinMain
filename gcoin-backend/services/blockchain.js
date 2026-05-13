@@ -67,7 +67,7 @@ async getDecimals() {
   }
 }
 
-  async mintTokens(toAddress, amount) {
+  async mintTokens(toAddress, amount, orderId) {
     await this.initialize();
     try {
       const decimals = await this.getDecimals();
@@ -75,7 +75,7 @@ async getDecimals() {
 
       console.log(`🪙 Minting ${amount} GCoin to ${toAddress}...`);
       
-      const tx = await this.contract.mint(toAddress, amountInWei);
+      const tx = await this.contract.mint(toAddress, amountInWei, orderId);
       console.log(`⏳ Transaction sent: ${tx.hash}`);
        if (!tx.hash) throw new Error("Mint transaction failed");
       const receipt = await tx.wait();

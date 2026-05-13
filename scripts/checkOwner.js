@@ -5,7 +5,7 @@ const { ethers } = pkg;
 async function main() {
   const contract = await ethers.getContractAt(
     "GCoin",
-    "0xdED4FD10426CD1DC53d2e98b51eDbB114C638aB2"
+    "0xCcAe191Eee8EF1991179757e642e0448fA6a4c78"
   );
 
   const owner = await contract.owner();

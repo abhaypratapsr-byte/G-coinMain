@@ -3,7 +3,7 @@ const router = express.Router();
 const Payment = require('../models/Payment');
 const User = require('../models/User');
 const blockchainService = require('../services/blockchain');
-const mintQueue = require('../queues/mintQueue');
+// const mintQueue = require('../queues/mintQueue');
 const { Cashfree, CFEnvironment } = require("cashfree-pg");
 
 const cashfree = new Cashfree(
@@ -129,10 +129,10 @@ router.post('/webhook', async (req, res) => {
         { new: true }
       );
       if (payment) {
-        await mintQueue.add("mint", { paymentId: payment._id }, {
-          attempts: 5,
-          backoff: { type: "exponential", delay: 5000 }
-        });
+        // await mintQueue.add("mint", { paymentId: payment._id }, {
+        //   attempts: 5,
+        //   backoff: { type: "exponential", delay: 5000 }
+        // });
         console.log("⚡ Mint queued (webhook):", orderId);
       }
     }
@@ -156,10 +156,10 @@ router.post("/verify-cashfree", async (req, res) => {
         { new: true }
       );
       if (payment) {
-        await mintQueue.add("mint", { paymentId: payment._id }, {
-          attempts: 5,
-          backoff: { type: "exponential", delay: 5000 }
-        });
+        // await mintQueue.add("mint", { paymentId: payment._id }, {
+        //   attempts: 5,
+        //   backoff: { type: "exponential", delay: 5000 }
+        // });
         console.log("⚡ Mint queued (verify):", orderId);
       }
       return res.json({ success: true });
@@ -200,10 +200,10 @@ router.get("/status/:orderId", async (req, res) => {
             { new: true }
           );
           if (updated) {
-            await mintQueue.add("mint", { paymentId: updated._id }, {
-              attempts: 5,
-              backoff: { type: "exponential", delay: 5000 }
-            });
+            // await mintQueue.add("mint", { paymentId: updated._id }, {
+            //   attempts: 5,
+            //   backoff: { type: "exponential", delay: 5000 }
+            // });
             return res.json({ status: "processing" });
           }
         }

@@ -1,8 +1,8 @@
 const dotenv = require('dotenv');
 dotenv.config();
 
-require('./workers/payoutWorker');
-require('./workers/mintWorker');
+// require('./workers/payoutWorker');
+// require('./workers/mintWorker');
 
 const express = require('express');
 const cors = require('cors');
@@ -16,11 +16,7 @@ const adminAuth = (req, res, next) => {
 };
 
 const rateLimit = require('express-rate-limit');
-
-const limiter = rateLimit({
-  windowMs: 1 * 60 * 1000,
-  max: 50
-});
+const { generalLimiter, paymentLimiter, redeemLimiter } = require('./middleware/security');
 const mintQueue = require('./queues/mintQueue');
 
 
@@ -30,7 +26,7 @@ app.set("trust proxy", 1);
 // FIX: Trailing slashes in origin strings cause mismatches — strip them.
 // Web3Auth OAuth popup also needs credentials support.
 const allowedOrigins = [
-  'https://g-coinmain-production.up.railway.app',
+  'https://g-coinmain.onrender.com',
   'https://g-coin-main-7lh2.vercel.app',
   'https://g-coin-main.vercel.app',
   process.env.FRONTEND_URL,
@@ -68,6 +64,10 @@ app.use(cors(corsOptions));
 
 // ─── Body Parsing ─────────────────────────────────────────────────────────────
 app.use('/api/payment/webhook', express.raw({ type: 'application/json' }));
+app.use('/webhook', express.raw({ 
+  type: 'application/json', 
+  verify: (req, _, buf) => { req.rawBody = buf.toString(); } 
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -86,14 +86,16 @@ const redeemRoutes   = require('./routes/redeem');
 const transferRoutes = require('./routes/transfer');
 const userRoutes     = require('./routes/user');
 const adminRoutes    = require('./routes/admin');
+const webhookRoutes  = require('./routes/webhook.cashfree');
 
-
-app.use('/api/payment', limiter);
+app.use('/api/payment', paymentLimiter);
+app.use('/api/redeem',  redeemLimiter);
+app.use(generalLimiter);
 app.use('/api/payment',  paymentRoutes);
 app.use('/api/redeem',   redeemRoutes);
 app.use('/api/transfer', transferRoutes);
 app.use('/api/user',     userRoutes);
-app.use('/api/admin', adminAuth, adminRoutes);
+app.use('/webhook', webhookRoutes);
 // ─── Health Check ─────────────────────────────────────────────────────────────
 app.get('/api/health', (_req, res) => {
   res.json({
@@ -156,6 +158,11 @@ const startServer = async () => {
 
     await blockchainService.initialize();
     console.log('✅ Blockchain service initialized');
+    // const { startMintWorker }     = require('./services/mintQueue');
+    // const { startRedeemListener } = require('./services/redeemListener');
+    // startMintWorker();
+    // startRedeemListener();
+    // console.log('✅ Mint worker and redeem listener started');
 
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`\n✅ Server running on port ${PORT}`);
