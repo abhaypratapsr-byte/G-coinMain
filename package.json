@@ -1,0 +1,26 @@
+{
+  "name": "g-coin(project)",
+  "version": "1.0.0",
+  "description": "Complete production-ready platform for GCoin, an INR-backed stablecoin on Polygon blockchain.",
+  "type": "module",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@nomiclabs/hardhat-ethers": "^2.2.3",
+    "dotenv": "^17.4.1",
+    "ethers": "^5.8.0",
+    "hardhat": "^2.22.0"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.9.6",
+    "@web3auth/ethereum-provider": "^9.7.0"
+  }
+}
