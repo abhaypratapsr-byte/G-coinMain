@@ -15,13 +15,6 @@ import axios from "axios";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8002/api";
 
-// Load Cashfree JS SDK
-declare global {
-  interface Window {
-    Cashfree: any;
-  }
-}
-
 export function BuyGCoin() {
   const { address, refreshBalance } = useWalletContext();
   const [amount, setAmount] = useState("");
@@ -32,26 +25,6 @@ export function BuyGCoin() {
   const [backendError, setBackendError] = useState<string | null>(null);
 
   const numAmount = parseFloat(amount) || 0;
-
-  // Load Cashfree SDK
-  const loadCashfreeSDK = useCallback(async () => {
-    if (window.Cashfree) return window.Cashfree;
-
-    return new Promise((resolve, reject) => {
-      const script = document.createElement("script");
-      script.src = "https://sdk.cashfree.com/js/v3/cashfree.js";
-      script.async = true;
-      script.onload = () => {
-        if (window.Cashfree) {
-          resolve(window.Cashfree);
-        } else {
-          reject(new Error("Cashfree SDK not loaded"));
-        }
-      };
-      script.onerror = () => reject(new Error("Failed to load Cashfree SDK"));
-      document.body.appendChild(script);
-    });
-  }, []);
 
   const createOrder = useCallback(async () => {
     if (!address || numAmount < 1) {
@@ -106,24 +79,43 @@ export function BuyGCoin() {
   }, [address, numAmount]);
 
   const handlePayment = useCallback(async () => {
-    if (!paymentSessionId || !address) return;
+    if (!paymentSessionId || !address) {
+      toast.error("Missing payment session ID");
+      return;
+    }
 
     setStep("processing");
     setLoading(true);
 
     try {
-      const Cashfree = await loadCashfreeSDK();
+      // Check if Cashfree SDK is loaded from layout.tsx
+      if (!(window as any).Cashfree) {
+        toast.error("Cashfree SDK not loaded. Please refresh the page.");
+        setStep("confirm");
+        setLoading(false);
+        return;
+      }
+
+      const Cashfree = (window as any).Cashfree;
       
+      // IMPORTANT: Since you're on production Cashfree dashboard, use "production"
+      // If your backend creates sandbox orders, use "sandbox"
       const env = process.env.NEXT_PUBLIC_CASHFREE_ENV === "production" ? "production" : "sandbox";
+      
+      console.log("Initializing Cashfree with mode:", env);
       const cashfree = Cashfree({ mode: env });
 
+      console.log("Opening checkout with session ID:", paymentSessionId);
+      
       const checkoutOptions = {
         paymentSessionId: paymentSessionId,
-        redirectTarget: "_self",
+        redirectTarget: "_modal", // Opens as popup overlay (best UX)
         returnUrl: `${window.location.origin}/?order_id=${orderId}`,
       };
 
       cashfree.checkout(checkoutOptions).then(async (result: any) => {
+        console.log("Checkout result:", result);
+        
         if (result.error) {
           toast.error(result.error.message || "Payment failed");
           setStep("confirm");
@@ -131,40 +123,53 @@ export function BuyGCoin() {
           return;
         }
         
-        if (result.redirect) {
-          console.log("Redirecting to Cashfree checkout...");
+        if (result.paymentDetails) {
+          // Payment completed successfully
+          console.log("Payment completed:", result.paymentDetails);
+          
+          // Verify with backend
+          try {
+            const verifyRes = await axios.post(`${API_URL}/payment/verify-payment`, {
+              order_id: orderId,
+              wallet: address,
+              amount: numAmount,
+            }, { timeout: 15000 });
+
+            if (verifyRes.data.success) {
+              setStep("success");
+              toast.success(`Successfully bought ${numAmount} GCoin!`);
+              await refreshBalance();
+              setTimeout(() => {
+                setStep("input");
+                setAmount("");
+                setOrderId("");
+                setPaymentSessionId("");
+                setBackendError(null);
+              }, 3000);
+            }
+          } catch (verifyErr: any) {
+            console.log("Verification pending:", verifyErr);
+            toast.info("Payment processing. Check your balance shortly.");
+            setStep("confirm");
+            setLoading(false);
+          }
+        } else if (result.redirect) {
+          console.log("User redirected to payment page");
         }
+      }).catch((err: any) => {
+        console.error("Checkout error:", err);
+        toast.error("Payment checkout failed: " + (err.message || "Unknown error"));
+        setStep("confirm");
+        setLoading(false);
       });
 
-      // Verify payment
-      try {
-        const verifyRes = await axios.post(`${API_URL}/payment/verify-payment`, {
-          order_id: orderId,
-          wallet: address,
-          amount: numAmount,
-        }, { timeout: 15000 });
-
-        if (verifyRes.data.success) {
-          setStep("success");
-          toast.success(`Successfully bought ${numAmount} GCoin!`);
-          await refreshBalance();
-          setTimeout(() => {
-            setStep("input");
-            setAmount("");
-            setOrderId("");
-            setPaymentSessionId("");
-            setBackendError(null);
-          }, 3000);
-        }
-      } catch (verifyErr: any) {
-        console.log("Verification pending:", verifyErr);
-      }
     } catch (err: any) {
+      console.error("Payment initialization error:", err);
       toast.error(err.message || "Failed to initialize payment");
       setStep("confirm");
       setLoading(false);
     }
-  }, [paymentSessionId, orderId, address, numAmount, refreshBalance, loadCashfreeSDK]);
+  }, [paymentSessionId, orderId, address, numAmount, refreshBalance]);
 
   return (
     <motion.div
@@ -348,7 +353,7 @@ export function BuyGCoin() {
                   <div className="absolute inset-0 border-4 border-gcoin-500 border-t-transparent rounded-full animate-spin" />
                 </div>
                 <h3 className="text-lg font-semibold">Processing Payment</h3>
-                <p className="text-sm text-muted-foreground">Redirecting to Cashfree checkout...</p>
+                <p className="text-sm text-muted-foreground">Opening Cashfree checkout...</p>
                 <Progress value={60} className="w-full" />
               </motion.div>
             )}

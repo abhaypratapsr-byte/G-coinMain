@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
+import Script from "next/script";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { Navbar } from "@/components/navbar";
@@ -15,11 +16,11 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "GCoin — INR-Backed Stablecoin Platform",
   description: "The future of digital payments in India. Buy, transfer, and redeem GCoin with seamless INR integration on Polygon blockchain.",
-  keywords: ["GCoin", "stablecoin", "INR", "Polygon", "crypto", "India", "blockchain", "Razorpay"],
+  keywords: ["GCoin", "stablecoin", "INR", "Polygon", "crypto", "India", "blockchain", "Cashfree"],
   authors: [{ name: "GCoin Team" }],
   openGraph: {
     title: "GCoin — India's Digital Currency",
-    description: "1 GCoin ~ 1 INR. Seamless crypto-to-fiat on Polygon.",
+    description: "1 GCoin = 1 INR. Seamless crypto-to-fiat on Polygon.",
     type: "website",
   },
 };
@@ -41,6 +42,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* CASHFREE SDK — MUST load before page renders */}
+        <Script
+          src="https://sdk.cashfree.com/js/v3/cashfree.js"
+          strategy="beforeInteractive"
+          id="cashfree-sdk"
+        />
+      </head>
       <body className={`${inter.variable} font-sans min-h-screen bg-background text-foreground`}>
         <ThemeProvider
           attribute="class"
@@ -50,7 +59,6 @@ export default function RootLayout({
         >
           <WalletProvider>
             <div className="relative min-h-screen flex flex-col">
-              {/* Background effects */}
               <div className="fixed inset-0 z-0 pointer-events-none">
                 <div className="absolute top-0 left-1/4 w-96 h-96 bg-gcoin-500/10 rounded-full blur-3xl" />
                 <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-gcoin-600/10 rounded-full blur-3xl" />
