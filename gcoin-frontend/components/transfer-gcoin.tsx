@@ -38,8 +38,8 @@ export function TransferGCoin() {
 
     try {
       const signer = await provider.getSigner();
-      const contractWithSigner = contract.connect(signer);
-      const decimals = await contract.decimals();
+      const contractWithSigner = contract.connect(signer) as any; // ← FIXED: cast to any
+      const decimals = await (contract as any).decimals();
       const amountWei = ethers.parseUnits(amount, decimals);
 
       const tx = await contractWithSigner.transfer(toAddress, amountWei);
@@ -47,7 +47,6 @@ export function TransferGCoin() {
 
       const receipt = await tx.wait();
 
-      // Record transfer in backend
       await axios.post(`${API_URL}/transfer/record`, {
         from: address,
         to: toAddress,
@@ -214,7 +213,7 @@ export function TransferGCoin() {
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Network</span>
-                    <span className="font-medium">Polygon Amoy</span>
+                    <span className="font-medium">Polygon Mainnet</span> {/* ← FIXED */}
                   </div>
                 </div>
 
