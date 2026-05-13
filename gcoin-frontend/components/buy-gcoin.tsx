@@ -105,7 +105,7 @@ export function BuyGCoin() {
       
       // IMPORTANT: Since you're on production Cashfree dashboard, use "production"
       // If your backend creates sandbox orders, use "sandbox"
-      const env = process.env.NEXT_PUBLIC_CASHFREE_ENV === "production" ? "production" : "sandbox";
+      const env = "production";  // Hardcode to production
       
       console.log("Initializing Cashfree with mode:", env);
       const cashfree = Cashfree({ mode: env });
