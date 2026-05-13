@@ -48,11 +48,16 @@ export function BuyGCoin() {
         timeout: 15000,
       });
 
-      if (res.data.success && res.data.data) {
-        setOrderId(res.data.data.order_id);
-        setPaymentSessionId(res.data.data.payment_session_id);
-        setStep("confirm");
-        toast.success("Order created! Proceed to payment.");
+            if (res.data.success) {
+        const orderData = res.data.order || res.data.data?.order;
+        if (orderData) {
+          setOrderId(orderData.id);
+          setPaymentSessionId(orderData.paymentSessionId);
+          setStep("confirm");
+          toast.success("Order created! Proceed to payment.");
+        } else {
+          toast.error("Invalid order response from backend");
+        }
       }
     } catch (err: any) {
       console.error("Payment order error:", err);
