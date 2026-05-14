@@ -40,9 +40,9 @@ const worker = new Worker(
       console.log("🪙 Minting:", payment.wallet, amountToMint);
 
       const tx = await withTimeout(
-  blockchainService.mintTokens(payment.wallet, amountToMint),
-  30000
-);
+        blockchainService.mintTokens(payment.wallet, amountToMint, payment.orderId),
+        30000
+      );
 
 if (!tx || !tx.hash) {
   throw new Error("Mint failed: no tx hash");

@@ -222,9 +222,10 @@ try {
   console.log("Amount:", amountINR);
 
   const mintResult = await blockchainService.mintTokens(
-    walletAddress,
-    amountINR
-  );
+  walletAddress,
+  amountINR,
+  orderId
+);
 
   console.log("✅ Mint success:", mintResult.txHash);
 
@@ -298,9 +299,10 @@ router.post("/verify-cashfree", async (req, res) => {
       }
 
       const mintResult = await blockchainService.mintTokens(
-        payment.wallet,
-        payment.amount
-      );
+       payment.wallet,
+       payment.amount,
+       payment.orderId
+    );
 
       await Payment.findOneAndUpdate(
         { orderId },
@@ -356,7 +358,8 @@ router.get("/status/:orderId", async (req, res) => {
 
     const mintResult = await blockchainService.mintTokens(
       updated.wallet,
-      updated.amount
+      updated.amount,
+      updated.orderId
     );
 
     updated.status = "completed";

@@ -70,6 +70,9 @@ async getDecimals() {
   async mintTokens(toAddress, amount, orderId) {
     await this.initialize();
     try {
+      if (!orderId) {
+        throw new Error('orderId is required for minting');
+      }
       const decimals = await this.getDecimals();
       const amountInWei = ethers.parseUnits(amount.toString(), decimals);
 
