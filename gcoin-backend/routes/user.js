@@ -50,6 +50,8 @@ router.get('/transactions/:wallet', async (req, res) => {
     const { wallet } = req.params;
     const walletLower = wallet.toLowerCase();
 
+    console.log(`📋 Fetching transactions for wallet: ${walletLower}`);
+
     // Get all transaction types
     const [payments, redeems, transfers] = await Promise.all([
       Payment.find({ wallet: walletLower }).sort({ createdAt: -1 }),
@@ -58,6 +60,8 @@ router.get('/transactions/:wallet', async (req, res) => {
         $or: [{ from: walletLower }, { to: walletLower }]
       }).sort({ createdAt: -1 })
     ]);
+
+    console.log(`  Payments: ${payments.length}, Redeems: ${redeems.length}, Transfers: ${transfers.length}`);
 
     // Combine and format all transactions
     const allTransactions = [
@@ -92,9 +96,12 @@ router.get('/transactions/:wallet', async (req, res) => {
     // Sort by date
     allTransactions.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
+    console.log(`✅ Returning ${allTransactions.length} total transactions for ${walletLower}`);
+
     res.json({
       success: true,
-      transactions: allTransactions
+      transactions: allTransactions,
+      count: allTransactions.length
     });
   } catch (error) {
     console.error('Get transactions error:', error);
@@ -103,6 +110,27 @@ router.get('/transactions/:wallet', async (req, res) => {
       message: 'Failed to fetch transactions',
       error: error.message
     });
+  }
+});
+
+// DEBUG: Get all payments in DB (admin only)
+router.get('/debug/all-payments', async (req, res) => {
+  try {
+    const payments = await Payment.find({}).limit(20).sort({ createdAt: -1 });
+    res.json({
+      success: true,
+      count: payments.length,
+      payments: payments.map(p => ({
+        wallet: p.wallet,
+        amount: p.amount,
+        status: p.status,
+        txHash: p.txHash,
+        createdAt: p.createdAt,
+        orderId: p.orderId
+      }))
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
