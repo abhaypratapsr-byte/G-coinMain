@@ -7,7 +7,7 @@ import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { WalletProvider } from "@/components/wallet-provider";
 import "./globals.css";
-
+import Providers from "./providers";
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-geist-sans",
@@ -51,13 +51,14 @@ export default function RootLayout({
         />
       </head>
       <body className={`${inter.variable} font-sans min-h-screen bg-background text-foreground`}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="dark"
-          enableSystem
-          disableTransitionOnChange={false}
-        >
-          <WalletProvider>
+        <Providers>
+           <ThemeProvider
+              attribute="class"
+              defaultTheme="dark"
+              enableSystem
+              disableTransitionOnChange={false}
+   >
+    <WalletProvider>
             <div className="relative min-h-screen flex flex-col">
               <div className="fixed inset-0 z-0 pointer-events-none">
                 <div className="absolute top-0 left-1/4 w-96 h-96 bg-gcoin-500/10 rounded-full blur-3xl" />
@@ -74,6 +75,7 @@ export default function RootLayout({
             <Toaster position="bottom-right" richColors closeButton />
           </WalletProvider>
         </ThemeProvider>
+      </Providers>
       </body>
     </html>
   );

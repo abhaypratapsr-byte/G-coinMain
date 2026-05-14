@@ -1,5 +1,5 @@
 "use client";
-
+import React from "react";
 import { useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useWalletContext } from "@/components/wallet-provider";
 import { truncateAddress, copyToClipboard } from "@/lib/utils";
 import { toast } from "sonner";
+import LoginButton from "./login-button";
 
 const navLinks = [
   { href: "/", label: "Home", icon: Home },
@@ -72,6 +73,7 @@ export function Navbar() {
 
             {/* Wallet Section */}
             <div className="flex items-center gap-3">
+              <LoginButton />
               {isConnected && address ? (
                 <div className="flex items-center gap-3">
                   <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-gcoin-500/10 border border-gcoin-500/20">
