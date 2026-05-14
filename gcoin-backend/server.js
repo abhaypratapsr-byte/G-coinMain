@@ -63,7 +63,10 @@ app.options('*', cors(corsOptions));
 app.use(cors(corsOptions));
 
 // ─── Body Parsing ─────────────────────────────────────────────────────────────
-app.use('/api/payment/webhook', express.raw({ type: 'application/json' }));
+app.use('/api/payment/webhook', express.raw({ 
+  type: 'application/json', 
+  verify: (req, _, buf) => { req.rawBody = buf.toString(); } 
+}));
 app.use('/webhook', express.raw({ 
   type: 'application/json', 
   verify: (req, _, buf) => { req.rawBody = buf.toString(); } 
