@@ -91,7 +91,12 @@ const userRoutes     = require('./routes/user');
 const adminRoutes    = require('./routes/admin');
 const webhookRoutes  = require('./routes/webhook.cashfree');
 
-app.use('/api/payment', paymentLimiter);
+app.use('/api/payment', (req, res, next) => {
+  if (req.path === '/webhook') {
+    return next();
+  }
+  return paymentLimiter(req, res, next);
+});
 app.use('/api/redeem',  redeemLimiter);
 app.use(generalLimiter);
 app.use('/api/payment',  paymentRoutes);
