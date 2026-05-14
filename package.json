@@ -20,8 +20,6 @@
     "hardhat": "^2.28.6"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^4.9.6",
-    "@privy-io/react-auth": "^3.25.0",
-    "@web3auth/ethereum-provider": "^9.7.0"
+    "@openzeppelin/contracts": "^4.9.6"
   }
 }
