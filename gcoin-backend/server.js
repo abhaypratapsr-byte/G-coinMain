@@ -102,6 +102,7 @@ app.use('/api/payment',  paymentRoutes);
 app.use('/api/redeem',   redeemRoutes);
 app.use('/api/transfer', transferRoutes);
 app.use('/api/user',     userRoutes);
+app.use('/api/admin',    adminRoutes);
 // ─── Health Check ─────────────────────────────────────────────────────────────
 app.get('/api/health', (_req, res) => {
   res.json({

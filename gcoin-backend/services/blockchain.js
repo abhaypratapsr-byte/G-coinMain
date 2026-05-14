@@ -86,7 +86,7 @@ async getDecimals() {
       
       return {
         success: true,
-        txHash: receipt.transactionHash,
+        txHash: receipt.hash || receipt.transactionHash,
         blockNumber: receipt.blockNumber
       };
     } catch (error) {
