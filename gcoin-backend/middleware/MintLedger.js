@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const mintLedgerSchema = new mongoose.Schema({
-  orderId:       { type: String, required: true, unique: true },
+  orderId:       { type: String, required: true },
   walletAddress: { type: String, required: true },
   amountINR:     { type: Number, required: true },
   gcnUnits:      { type: Number, required: true },

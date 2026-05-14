@@ -17,7 +17,7 @@ const adminAuth = (req, res, next) => {
 
 const rateLimit = require('express-rate-limit');
 const { generalLimiter, paymentLimiter, redeemLimiter } = require('./middleware/security');
-const mintQueue = require('./queues/mintQueue');
+//const mintQueue = require('./queues/mintQueue');
 
 
 const app = express();

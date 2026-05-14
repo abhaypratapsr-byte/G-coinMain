@@ -6,7 +6,7 @@ const redeemLedgerSchema = new mongoose.Schema({
   amountINR:     { type: Number, required: true },
   redeemId:      { type: String, default: '' },   // bytes32 from contract
   utrRef:        { type: String, default: '' },    // filled by admin on payout
-  txHash:        { type: String, required: true, unique: true },
+  txHash:        { type: String, required: true },
   blockNumber:   { type: Number },
   status:        { type: String, enum: ['pending', 'processing', 'paid', 'failed'], default: 'pending' },
   payoutRef:     { type: String, default: null },

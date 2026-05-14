@@ -6,11 +6,38 @@ const blockchainService = require('../services/blockchain');
 // const mintQueue = require('../queues/mintQueue');
 const { Cashfree, CFEnvironment } = require("cashfree-pg");
 
-const cashfree = new Cashfree(
-  CFEnvironment.PRODUCTION,
-  process.env.CASHFREE_APP_ID,
-  process.env.CASHFREE_SECRET_KEY
-);
+const cashfreeEnv =
+  process.env.CASHFREE_ENVIRONMENT?.toUpperCase() === 'SANDBOX'
+    ? CFEnvironment.SANDBOX
+    : CFEnvironment.PRODUCTION;
+
+const cashfreeAppId = process.env.CASHFREE_APP_ID;
+const cashfreeSecret = process.env.CASHFREE_SECRET_KEY;
+
+let cashfree;
+if (!cashfreeAppId || !cashfreeSecret) {
+  console.warn('⚠️ Cashfree credentials missing. Falling back to mock payment mode.');
+  cashfree = {
+    PGCreateOrder: async (payload) => ({
+      data: {
+        order_id: payload.order_id,
+        payment_session_id: `mock_session_${Date.now()}`,
+        order_amount: payload.order_amount,
+        order_currency: payload.order_currency,
+        order_status: 'PENDING'
+      }
+    }),
+    PGFetchOrder: async (orderId) => ({
+      data: {
+        order_status: 'PAID',
+        order_id: orderId
+      }
+    }),
+    PGVerifyWebhookSignature: () => true
+  };
+} else {
+  cashfree = new Cashfree(cashfreeEnv, cashfreeAppId, cashfreeSecret);
+}
 
 router.post('/create-order', async (req, res) => {
   try {
