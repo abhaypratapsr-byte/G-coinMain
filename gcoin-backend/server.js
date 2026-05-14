@@ -89,7 +89,6 @@ const redeemRoutes   = require('./routes/redeem');
 const transferRoutes = require('./routes/transfer');
 const userRoutes     = require('./routes/user');
 const adminRoutes    = require('./routes/admin');
-const webhookRoutes  = require('./routes/webhook.cashfree');
 
 app.use('/api/payment', (req, res, next) => {
   if (req.path === '/webhook') {
@@ -103,7 +102,6 @@ app.use('/api/payment',  paymentRoutes);
 app.use('/api/redeem',   redeemRoutes);
 app.use('/api/transfer', transferRoutes);
 app.use('/api/user',     userRoutes);
-app.use('/webhook', webhookRoutes);
 // ─── Health Check ─────────────────────────────────────────────────────────────
 app.get('/api/health', (_req, res) => {
   res.json({

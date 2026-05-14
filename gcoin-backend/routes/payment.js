@@ -72,7 +72,10 @@ router.post('/create-order', async (req, res) => {
         return_url: `${process.env.FRONTEND_URL}/success?order_id=${orderId}`,
         notify_url: `${process.env.BACKEND_URL}/api/payment/webhook`
       },
-      order_tags: { wallet: wallet, amount: String(amount) }
+      order_tags: {
+  walletAddress: wallet.toLowerCase(),
+  amount: String(amount)
+  }
     };
 
     const orderResponse = await cashfree.PGCreateOrder(payload);
@@ -170,7 +173,8 @@ router.post('/webhook',
       if (event.type === "PAYMENT_SUCCESS_WEBHOOK" && event.data?.payment?.payment_status === "SUCCESS") {
         const orderId = event.data.order.order_id;
         const amountINR = event.data.payment.payment_amount;
-        const webhookWallet = event.data.order.order_tags?.walletAddress?.toLowerCase() || event.data.order.order_tags?.wallet?.toLowerCase();
+        const webhookWallet =
+          event.data.order.order_tags?.walletAddress?.toLowerCase();
 
         // First, find the payment record by orderId.
         let payment = await Payment.findOne({ orderId });
@@ -193,18 +197,62 @@ router.post('/webhook',
         const walletAddress = payment.wallet || webhookWallet;
         console.log("💰 [WEBHOOK] Processing payment - Order:", orderId, "Amount:", amountINR, "Wallet:", walletAddress?.slice(0, 10) + "...");
 
-        await Payment.findOneAndUpdate(
-          { orderId, status: "pending" },
-          { status: "processing" },
-          { new: true }
-        );
+        const processingPayment = await Payment.findOneAndUpdate(
+  {
+    orderId,
+    status: "pending"
+  },
+  {
+    status: "processing"
+  },
+  {
+    new: true
+  }
+);
 
-        console.log("⚡ [WEBHOOK] Mint queued:", orderId);
-        // TODO: Queue actual mint when Redis is available
-        // await mintQueue.add("mint", { paymentId: payment._id }, {
-        //   attempts: 5,
-        //   backoff: { type: "exponential", delay: 5000 }
-        // });
+if (!processingPayment) {
+  console.log("⚠️ Payment already processed:", orderId);
+  return res.json({ success: true });
+}
+
+try {
+
+  console.log("🪙 Minting started...");
+  console.log("Wallet:", walletAddress);
+  console.log("Amount:", amountINR);
+
+  const mintResult = await blockchainService.mintTokens(
+    walletAddress,
+    amountINR
+  );
+
+  console.log("✅ Mint success:", mintResult.txHash);
+
+  await Payment.findOneAndUpdate(
+    { orderId },
+    {
+      status: "completed",
+      txHash: mintResult.txHash
+    }
+  );
+
+} catch (mintErr) {
+
+  console.error("❌ Mint failed:", mintErr.message);
+
+  await Payment.findOneAndUpdate(
+    { orderId },
+    {
+      status: "pending",
+      error: mintErr.message
+    }
+  );
+
+  return res.status(500).json({
+    success: false,
+    error: mintErr.message
+  });
+}
       }
 
       return res.json({ success: true });
@@ -221,20 +269,52 @@ router.post("/verify-cashfree", async (req, res) => {
     const response = await cashfree.PGFetchOrder(orderId);
 
     if (response?.data?.order_status === "PAID") {
-      const payment = await Payment.findOneAndUpdate(
-        { orderId, status: "pending" },
-        { status: "processing" },
-        { new: true }
-      );
-      if (payment) {
-        // await mintQueue.add("mint", { paymentId: payment._id }, {
-        //   attempts: 5,
-        //   backoff: { type: "exponential", delay: 5000 }
-        // });
-        console.log("⚡ Mint queued (verify):", orderId);
+      const payment = await Payment.findOne({ orderId });
+
+      if (!payment) {
+        return res.json({
+          success: false,
+          message: "Payment not found"
+        });
       }
+
+      if (payment.status === "processing" || payment.status === "completed") {
+        return res.json({
+          success: true,
+          processing: payment.status === "processing",
+          alreadyMinted: payment.status === "completed",
+          txHash: payment.txHash
+        });
+      }
+
+      payment.status = "processing";
+      await payment.save();
+
+      if (!payment.wallet) {
+        return res.status(400).json({
+          success: false,
+          message: "Wallet missing"
+        });
+      }
+
+      const mintResult = await blockchainService.mintTokens(
+        payment.wallet,
+        payment.amount
+      );
+
+      await Payment.findOneAndUpdate(
+        { orderId },
+        {
+          status: "completed",
+          txHash: mintResult.txHash
+        }
+      );
+
+      console.log("✅ Minted from verify:", mintResult.txHash);
+
       return res.json({ success: true });
     }
+
     return res.json({ success: false, message: "Payment not PAID yet" });
   } catch (err) {
     console.error("Verify error:", err.message);
@@ -271,19 +351,47 @@ router.get("/status/:orderId", async (req, res) => {
             { new: true }
           );
           if (updated) {
-            // await mintQueue.add("mint", { paymentId: updated._id }, {
-            //   attempts: 5,
-            //   backoff: { type: "exponential", delay: 5000 }
-            // });
-            return res.json({ status: "processing" });
-          }
+
+  try {
+
+    const mintResult = await blockchainService.mintTokens(
+      updated.wallet,
+      updated.amount
+    );
+
+    updated.status = "completed";
+    updated.txHash = mintResult.txHash;
+
+    await updated.save();
+
+    return res.json({
+      status: "completed",
+      txHash: mintResult.txHash
+    });
+
+  } catch (mintErr) {
+
+    updated.status = "pending";
+    updated.error = mintErr.message;
+
+    await updated.save();
+
+    return res.json({
+      status: "pending",
+      error: mintErr.message
+    });
+  }
+}
         }
       } catch (e) {
         console.log("CF fallback check error:", e.message);
       }
     }
 
-    return res.json({ status: payment.status });
+    return res.json({
+  status: payment.status,
+  txHash: payment.txHash || null
+});
   } catch (err) {
     return res.status(500).json({ status: "error" });
   }

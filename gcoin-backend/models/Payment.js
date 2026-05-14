@@ -11,6 +11,7 @@ const paymentSchema = new mongoose.Schema({
     default: "pending"
   },
   txHash: String,
+  error: String,
   completedAt: Date
 }, { timestamps: true });
 
