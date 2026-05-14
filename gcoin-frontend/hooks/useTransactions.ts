@@ -16,14 +16,17 @@ export function useTransactions() {
     setLoading(true);
     setError(null);
     try {
-      const res = await axios.get<ApiResponse<Transaction[]>>(
+      const res = await axios.get<any>(
         `${API_URL}/user/transactions/${wallet}`
       );
-      if (res.data.success && res.data.data) {
-        setTransactions(res.data.data);
+      if (res.data.success && res.data.transactions) {
+        setTransactions(res.data.transactions);
+      } else {
+        setError("No transactions data received");
       }
     } catch (err: any) {
-      setError(err.response?.data?.error || "Failed to fetch transactions");
+      console.error("Fetch transactions error:", err);
+      setError(err.response?.data?.error || err.response?.data?.message || "Failed to fetch transactions");
     } finally {
       setLoading(false);
     }
@@ -33,14 +36,17 @@ export function useTransactions() {
     setLoading(true);
     setError(null);
     try {
-      const res = await axios.get<ApiResponse<UserProfile>>(
+      const res = await axios.get<any>(
         `${API_URL}/user/profile/${wallet}`
       );
-      if (res.data.success && res.data.data) {
-        setProfile(res.data.data);
+      if (res.data.success && res.data.profile) {
+        setProfile(res.data.profile);
+      } else {
+        setError("No profile data received");
       }
     } catch (err: any) {
-      setError(err.response?.data?.error || "Failed to fetch profile");
+      console.error("Fetch profile error:", err);
+      setError(err.response?.data?.error || err.response?.data?.message || "Failed to fetch profile");
     } finally {
       setLoading(false);
     }
