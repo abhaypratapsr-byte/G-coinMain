@@ -169,27 +169,42 @@ router.post('/webhook',
 
       if (event.type === "PAYMENT_SUCCESS_WEBHOOK" && event.data?.payment?.payment_status === "SUCCESS") {
         const orderId = event.data.order.order_id;
-        const walletAddress = event.data.order.order_tags?.walletAddress;
         const amountINR = event.data.payment.payment_amount;
+        const webhookWallet = event.data.order.order_tags?.walletAddress?.toLowerCase() || event.data.order.order_tags?.wallet?.toLowerCase();
 
+        // First, find the payment record by orderId.
+        let payment = await Payment.findOne({ orderId });
+
+        // Fallback: match pending payment by wallet + amount when orderId lookup fails.
+        if (!payment && webhookWallet) {
+          payment = await Payment.findOne({ wallet: webhookWallet, amount: amountINR, status: 'pending' });
+          if (payment) {
+            console.warn("⚠️ [WEBHOOK] orderId lookup failed, falling back to wallet+amount match for order:", orderId);
+            await Payment.findOneAndUpdate({ _id: payment._id }, { orderId }, { new: true });
+          }
+        }
+
+        if (!payment) {
+          console.warn("⚠️ [WEBHOOK] Payment record not found for order:", orderId, "webhookWallet:", webhookWallet, "amount:", amountINR);
+          console.warn("📦 [WEBHOOK] Order payload:", JSON.stringify(event.data.order));
+          return res.json({ success: true });
+        }
+
+        const walletAddress = payment.wallet || webhookWallet;
         console.log("💰 [WEBHOOK] Processing payment - Order:", orderId, "Amount:", amountINR, "Wallet:", walletAddress?.slice(0, 10) + "...");
 
-        const payment = await Payment.findOneAndUpdate(
+        await Payment.findOneAndUpdate(
           { orderId, status: "pending" },
           { status: "processing" },
           { new: true }
         );
 
-        if (payment) {
-          console.log("⚡ [WEBHOOK] Mint queued:", orderId);
-          // TODO: Queue actual mint when Redis is available
-          // await mintQueue.add("mint", { paymentId: payment._id }, {
-          //   attempts: 5,
-          //   backoff: { type: "exponential", delay: 5000 }
-          // });
-        } else {
-          console.warn("⚠️ [WEBHOOK] Payment record not found for order:", orderId);
-        }
+        console.log("⚡ [WEBHOOK] Mint queued:", orderId);
+        // TODO: Queue actual mint when Redis is available
+        // await mintQueue.add("mint", { paymentId: payment._id }, {
+        //   attempts: 5,
+        //   backoff: { type: "exponential", delay: 5000 }
+        // });
       }
 
       return res.json({ success: true });
