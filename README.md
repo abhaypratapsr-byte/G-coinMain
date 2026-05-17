@@ -5,10 +5,39 @@ Complete production-ready platform for GCoin, an INR-backed stablecoin on Polygo
 ## 🏗️ Architecture
 
 ```
-/app/
+/
 ├── gcoin-backend/          # Node.js + Express API
 ├── gcoin-frontend/         # Next.js User Frontend
-└── gcoin-admin/           # Next.js Admin Panel
+└── gcoin-admin/            # Next.js Admin Panel
+```
+
+---
+
+## 🧩 Root Workspace
+
+This repository is organized as a Yarn workspace monorepo. The root project centrally manages the three apps below:
+
+- `gcoin-frontend`
+- `gcoin-admin`
+- `gcoin-backend`
+
+### Root commands
+
+```bash
+# Install dependencies for all workspaces
+yarn install
+
+# Start all services together
+yarn dev
+
+# Start a single service
+yarn dev:frontend
+yarn dev:admin
+yarn dev:backend
+
+# Build the Next.js apps
+yarn build:frontend
+yarn build:admin
 ```
 
 ---

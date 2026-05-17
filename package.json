@@ -1,13 +1,28 @@
 {
-  "name": "g-coin(project)",
+  "name": "g-coin-main",
   "version": "1.0.0",
+  "private": true,
   "description": "Complete production-ready platform for GCoin, an INR-backed stablecoin on Polygon blockchain.",
   "type": "module",
   "main": "index.js",
   "directories": {
     "test": "tests"
   },
+  "packageManager": "yarn@1.22.22",
+  "workspaces": [
+    "gcoin-frontend",
+    "gcoin-admin",
+    "gcoin-backend"
+  ],
   "scripts": {
+    "dev:frontend": "yarn workspace gcoin-frontend dev",
+    "dev:admin": "yarn workspace gcoin-admin dev",
+    "dev:backend": "yarn workspace gcoin-backend start",
+    "dev": "concurrently \"yarn dev:backend\" \"yarn dev:frontend\" \"yarn dev:admin\"",
+    "build:frontend": "yarn workspace gcoin-frontend build",
+    "build:admin": "yarn workspace gcoin-admin build",
+    "build": "yarn build:frontend && yarn build:admin",
+    "lint": "yarn workspace gcoin-frontend lint && yarn workspace gcoin-admin lint",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -15,6 +30,7 @@
   "license": "ISC",
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.2.3",
+    "concurrently": "^8.2.2",
     "dotenv": "^17.4.1",
     "ethers": "^5.8.0",
     "hardhat": "^2.28.6"
