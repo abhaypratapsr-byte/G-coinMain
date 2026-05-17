@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useCallback, useEffect } fr
 import { ethers } from "ethers";
 import type { WalletState } from "@/types";
 import { toast } from "sonner";
+import { usePrivy, useWallets } from "@privy-io/react-auth";
 
 const CONTRACT_ABI = [
   "function balanceOf(address owner) view returns (uint256)",
@@ -16,11 +17,11 @@ const CONTRACT_ABI = [
 ];
 
 const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "0xa08862c6eaBBF4a8527B1C7abd9E3FE38A2d943f";
-const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL || "https://rpc-amoy.polygon.technology";
-const CHAIN_ID = parseInt(process.env.NEXT_PUBLIC_CHAIN_ID || "80002");
+const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL || "https://polygon-rpc.com";
+const CHAIN_ID = parseInt(process.env.NEXT_PUBLIC_CHAIN_ID || "137");
 
 interface WalletContextType extends WalletState {
-  provider: ethers.BrowserProvider | null;
+  provider: ethers.BrowserProvider | ethers.JsonRpcProvider | null;
   contract: ethers.Contract | null;
   connect: () => Promise<void>;
   disconnect: () => void;
@@ -30,6 +31,9 @@ interface WalletContextType extends WalletState {
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
 export function WalletProvider({ children }: { children: React.ReactNode }) {
+  const { authenticated, user } = usePrivy();
+  const { wallets } = useWallets();
+
   const [state, setState] = useState<WalletState>({
     address: null,
     balance: "0",
@@ -39,10 +43,13 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     error: null,
   });
 
-  const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null);
+  const [provider, setProvider] = useState<ethers.BrowserProvider | ethers.JsonRpcProvider | null>(null);
   const [contract, setContract] = useState<ethers.Contract | null>(null);
 
-  const updateBalance = useCallback(async (address: string, prov: ethers.BrowserProvider) => {
+  const updateBalance = useCallback(async (
+    address: string,
+    prov: ethers.BrowserProvider | ethers.JsonRpcProvider
+  ) => {
     try {
       const code = await prov.getCode(CONTRACT_ADDRESS);
       if (code === "0x") {
@@ -52,25 +59,82 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       const ctr = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, prov);
       const bal = await ctr.balanceOf(address);
       const decimals = await ctr.decimals();
-      const formatted = ethers.formatUnits(bal, decimals);
-      setState((prev) => ({ ...prev, balance: formatted }));
-    } catch (err: any) {
+      setState((prev) => ({ ...prev, balance: ethers.formatUnits(bal, decimals) }));
+    } catch (err) {
       console.error("Balance fetch error:", err);
       setState((prev) => ({ ...prev, balance: "0" }));
     }
   }, []);
 
-  const connect = useCallback(async () => {
-    if (typeof window === "undefined") {
-      toast.error("Wallet connection only works in browser");
-      return;
-    }
+  // ─── Auto-connect when Privy wallets are ready ───────────────────────────
+  useEffect(() => {
+    if (!authenticated || !wallets || wallets.length === 0) return;
 
+    const autoConnect = async () => {
+      // Prefer MetaMask/injected wallet, fall back to Privy embedded wallet
+      const injected = wallets.find((w) => w.walletClientType === "metamask")
+        || wallets.find((w) => w.walletClientType !== "privy");
+      const embeddedWallet = wallets.find((w) => w.walletClientType === "privy");
+
+      const activeWallet = injected || embeddedWallet;
+      if (!activeWallet) return;
+
+      setState((prev) => ({ ...prev, isConnecting: true }));
+
+      try {
+        // Switch to correct chain
+        await activeWallet.switchChain(CHAIN_ID);
+
+        // Get EIP-1193 provider from Privy wallet
+        const eip1193 = await activeWallet.getEthereumProvider();
+        const prov = new ethers.BrowserProvider(eip1193);
+        const address = activeWallet.address;
+
+        setProvider(prov);
+        const ctr = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, prov);
+        setContract(ctr);
+
+        setState({
+          address,
+          balance: "0",
+          chainId: CHAIN_ID,
+          isConnecting: false,
+          isConnected: true,
+          error: null,
+        });
+
+        await updateBalance(address, prov);
+
+        const walletType = activeWallet.walletClientType === "privy"
+          ? "Embedded wallet"
+          : activeWallet.walletClientType;
+        toast.success(`${walletType} connected`, {
+          description: `${address.slice(0, 6)}...${address.slice(-4)}`,
+        });
+      } catch (err: any) {
+        console.error("Auto-connect error:", err);
+        setState((prev) => ({
+          ...prev,
+          isConnecting: false,
+          error: err.message,
+        }));
+      }
+    };
+
+    autoConnect();
+  }, [authenticated, wallets, updateBalance]);
+
+  // ─── Manual connect (for unauthenticated / MetaMask-only users) ──────────
+  const connect = useCallback(async () => {
+    // If already handled by Privy wallets auto-connect above, skip
+    if (authenticated && wallets.length > 0) return;
+
+    if (typeof window === "undefined") return;
     const ethereum = (window as any).ethereum;
-    
+
     if (!ethereum) {
       toast.error("No wallet detected", {
-        description: "Please install MetaMask or another Web3 wallet extension.",
+        description: "Please install MetaMask or log in with Google.",
         action: {
           label: "Get MetaMask",
           onClick: () => window.open("https://metamask.io/download/", "_blank"),
@@ -84,31 +148,16 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const prov = new ethers.BrowserProvider(ethereum, {
-        name: "Polygon Amoy",
+        name: "Polygon",
         chainId: CHAIN_ID,
       });
 
-      let accounts: string[];
-      try {
-        accounts = await prov.send("eth_requestAccounts", []);
-      } catch (err: any) {
-        if (err.code === 4001) {
-          toast.error("Connection rejected", { description: "You rejected the wallet connection request." });
-        } else {
-          toast.error("Connection failed", { description: err.message || "Could not connect to wallet" });
-        }
-        throw err;
-      }
-
-      if (!accounts || accounts.length === 0) {
-        throw new Error("No accounts found in wallet");
-      }
+      const accounts: string[] = await prov.send("eth_requestAccounts", []);
+      if (!accounts || accounts.length === 0) throw new Error("No accounts found");
 
       const network = await prov.getNetwork();
-      const chainId = Number(network.chainId);
-
-      if (chainId !== CHAIN_ID) {
-        toast.info("Switching network to Polygon Amoy...");
+      if (Number(network.chainId) !== CHAIN_ID) {
+        toast.info("Switching to Polygon...");
         try {
           await ethereum.request({
             method: "wallet_switchEthereumChain",
@@ -116,77 +165,48 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
           });
         } catch (switchError: any) {
           if (switchError.code === 4902) {
-            try {
-              await ethereum.request({
-                method: "wallet_addEthereumChain",
-                params: [
-                  {
-                    chainId: `0x${CHAIN_ID.toString(16)}`,
-                    chainName: "Polygon Amoy Testnet",
-                    nativeCurrency: { name: "MATIC", symbol: "MATIC", decimals: 18 },
-                    rpcUrls: [RPC_URL],
-                    blockExplorerUrls: ["https://amoy.polygonscan.com"],
-                  },
-                ],
-              });
-              toast.success("Polygon Amoy added to your wallet!");
-            } catch (addError: any) {
-              toast.error("Failed to add network", { description: addError.message });
-              throw addError;
-            }
-          } else if (switchError.code === 4001) {
-            toast.error("Network switch rejected");
-            throw switchError;
-          } else {
-            toast.error("Network error", { description: switchError.message });
-            throw switchError;
-          }
+            await ethereum.request({
+              method: "wallet_addEthereumChain",
+              params: [{
+                chainId: `0x${CHAIN_ID.toString(16)}`,
+                chainName: "Polygon Mainnet",
+                nativeCurrency: { name: "MATIC", symbol: "MATIC", decimals: 18 },
+                rpcUrls: [RPC_URL],
+                blockExplorerUrls: ["https://polygonscan.com"],
+              }],
+            });
+          } else throw switchError;
         }
       }
 
       const address = accounts[0];
       setProvider(prov);
-      
       const ctr = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, prov);
       setContract(ctr);
 
-      setState({
-        address,
-        balance: "0",
-        chainId,
-        isConnecting: false,
-        isConnected: true,
-        error: null,
-      });
-
-      toast.success("Wallet connected!", {
-        description: `${address.slice(0, 6)}...${address.slice(-4)}`,
-      });
-
+      setState({ address, balance: "0", chainId: CHAIN_ID, isConnecting: false, isConnected: true, error: null });
+      toast.success("Wallet connected!", { description: `${address.slice(0, 6)}...${address.slice(-4)}` });
       await updateBalance(address, prov);
     } catch (err: any) {
-      console.error("Wallet connection error:", err);
-      setState((prev) => ({
-        ...prev,
-        isConnecting: false,
-        error: err.message || "Failed to connect wallet",
-      }));
+      console.error("Connect error:", err);
+      setState((prev) => ({ ...prev, isConnecting: false, error: err.message }));
+      if (err.code !== 4001) toast.error("Connection failed", { description: err.message });
     }
-  }, [updateBalance]);
+  }, [authenticated, wallets, updateBalance]);
 
   const disconnect = useCallback(() => {
     setProvider(null);
     setContract(null);
-    setState({
-      address: null,
-      balance: "0",
-      chainId: null,
-      isConnecting: false,
-      isConnected: false,
-      error: null,
-    });
+    setState({ address: null, balance: "0", chainId: null, isConnecting: false, isConnected: false, error: null });
     toast.info("Wallet disconnected");
   }, []);
+
+  // ─── Disconnect when Privy logs out ──────────────────────────────────────
+  useEffect(() => {
+    if (!authenticated && state.isConnected) {
+      disconnect();
+    }
+  }, [authenticated, state.isConnected, disconnect]);
 
   const refreshBalance = useCallback(async () => {
     if (state.address && provider) {
@@ -194,64 +214,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     }
   }, [state.address, provider, updateBalance]);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const ethereum = (window as any).ethereum;
-    if (!ethereum) return;
-
-    const checkConnection = async () => {
-      try {
-        const prov = new ethers.BrowserProvider(ethereum);
-        const accounts = await prov.send("eth_accounts", []);
-        if (accounts && accounts.length > 0) {
-          await connect();
-        }
-      } catch {
-        // Silent fail
-      }
-    };
-
-    checkConnection();
-  }, [connect]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const ethereum = (window as any).ethereum;
-    if (!ethereum) return;
-
-    const handleAccountsChanged = (accounts: string[]) => {
-      if (accounts.length === 0) {
-        disconnect();
-        toast.warning("Wallet disconnected");
-      } else if (accounts[0] !== state.address) {
-        connect();
-      }
-    };
-
-    const handleChainChanged = () => {
-      window.location.reload();
-    };
-
-    ethereum.on("accountsChanged", handleAccountsChanged);
-    ethereum.on("chainChanged", handleChainChanged);
-
-    return () => {
-      ethereum.removeListener?.("accountsChanged", handleAccountsChanged);
-      ethereum.removeListener?.("chainChanged", handleChainChanged);
-    };
-  }, [state.address, connect, disconnect]);
-
   return (
-    <WalletContext.Provider
-      value={{
-        ...state,
-        provider,
-        contract,
-        connect,
-        disconnect,
-        refreshBalance,
-      }}
-    >
+    <WalletContext.Provider value={{ ...state, provider, contract, connect, disconnect, refreshBalance }}>
       {children}
     </WalletContext.Provider>
   );
