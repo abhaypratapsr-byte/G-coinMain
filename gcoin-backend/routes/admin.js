@@ -80,6 +80,128 @@ router.get('/stats', async (req, res) => {
   }
 });
 
+// --- New Admin Control Endpoints ---
+
+// Get Contract Status
+router.get('/contract-status', async (req, res) => {
+  try {
+    const status = await blockchainService.getContractStatus();
+    res.json({ success: true, status });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Pause/Unpause
+router.post('/contract/pause', async (req, res) => {
+  try {
+    const receipt = await blockchainService.pause();
+    res.json({ success: true, txHash: receipt.hash });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.post('/contract/unpause', async (req, res) => {
+  try {
+    const receipt = await blockchainService.unpause();
+    res.json({ success: true, txHash: receipt.hash });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Blacklist management
+router.post('/users/:wallet/blacklist', async (req, res) => {
+  try {
+    const { wallet } = req.params;
+    const { reason = 'Blacklisted by admin' } = req.body;
+    const receipt = await blockchainService.blacklist(wallet, reason);
+    res.json({ success: true, txHash: receipt.hash });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.post('/users/:wallet/unblacklist', async (req, res) => {
+  try {
+    const { wallet } = req.params;
+    const receipt = await blockchainService.unBlacklist(wallet);
+    res.json({ success: true, txHash: receipt.hash });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// KYC management
+router.post('/users/:wallet/verify-kyc', async (req, res) => {
+  try {
+    const { wallet } = req.params;
+    const receipt = await blockchainService.verifyKYC(wallet);
+    res.json({ success: true, txHash: receipt.hash });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.post('/users/:wallet/revoke-kyc', async (req, res) => {
+  try {
+    const { wallet } = req.params;
+    const receipt = await blockchainService.revokeKYC(wallet);
+    res.json({ success: true, txHash: receipt.hash });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Supply management
+router.post('/contract/max-supply', async (req, res) => {
+  try {
+    const { amount } = req.body;
+    const receipt = await blockchainService.setMaxSupply(amount);
+    res.json({ success: true, txHash: receipt.hash });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.post('/contract/min-redeem', async (req, res) => {
+  try {
+    const { amount } = req.body;
+    const receipt = await blockchainService.setMinRedeemAmount(amount);
+    res.json({ success: true, txHash: receipt.hash });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Manual Minting
+router.post('/contract/mint', async (req, res) => {
+  try {
+    const { to, amount, reason = 'Admin manual mint' } = req.body;
+    if (!to || !amount) {
+      return res.status(400).json({ success: false, message: 'Recipient and amount required' });
+    }
+    const orderId = `MANUAL_${Date.now()}`;
+    const result = await blockchainService.mintTokens(to, amount, orderId);
+
+    // Track in database as a completed payment
+    await Payment.create({
+      wallet: to,
+      amount: amount,
+      gcoinAmount: amount,
+      razorpay_order_id: orderId,
+      status: 'completed',
+      txHash: result.txHash,
+      notes: reason
+    });
+
+    res.json({ success: true, txHash: result.txHash });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // Get all pending redeems
 router.get('/redeems/pending', async (req, res) => {
   try {

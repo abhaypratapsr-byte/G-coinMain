@@ -14,7 +14,7 @@ import {
 // ─── Config ───────────────────────────────────────────────────────────────────
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
 
-type Tab = 'dashboard' | 'redeems' | 'transfers' | 'users';
+type Tab = 'dashboard' | 'redeems' | 'transfers' | 'users' | 'system';
 
 interface Toast {
   id: string;
@@ -54,6 +54,8 @@ interface UserRecord {
   email?: string;
   totalMinted?: number;
   createdAt?: string;
+  isBlacklisted?: boolean;
+  isKYCVerified?: boolean;
 }
 
 interface Stats {
@@ -63,6 +65,14 @@ interface Stats {
   totalPayments: number;
   pendingRedeems: number;
   totalTransfers: number;
+}
+
+interface ContractStatus {
+  paused: boolean;
+  maxSupply: string;
+  totalSupply: string;
+  minRedeem: string;
+  kycRequired: boolean;
 }
 
 // ─── Global Styles ────────────────────────────────────────────────────────────
@@ -882,9 +892,12 @@ function RedeemsTab({ redeems, totalCount, loading, onComplete, onReject, refres
                             <Copy size={11} />
                           </button>
                         </div>
+                      {/* @ts-ignore */}
+                      <a href={r.burnTxHash ? `https://polygonscan.com/tx/${r.burnTxHash}` : '#'} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
                         <span className={`pill ${r.status === 'completed' ? 'pill-teal' : r.status === 'failed' ? 'pill-red' : 'pill-gold'}`}>
                           {r.status?.toUpperCase() || 'PENDING'}
                         </span>
+                      </a>
                         {r.createdAt && (
                           <span style={{ marginLeft: 8, fontFamily: 'var(--font-mono)', fontSize: '9.5px', color: 'var(--text3)' }}>
                             {new Date(r.createdAt).toLocaleDateString('en-IN')}
@@ -1067,9 +1080,12 @@ function TransfersTab({ transfers, totalCount, loading, search, setSearch, page,
                   <span className="mono" style={{ fontSize: '9.5px', color: 'var(--text3)', marginLeft: 3 }}>GCN</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'center' }}>
-                  <span className={`pill ${t.status === 'confirmed' ? 'pill-teal' : 'pill-gold'}`}>
-                    {t.status?.toUpperCase()}
-                  </span>
+                  {/* @ts-ignore */}
+                  <a href={`https://polygonscan.com/tx/${t.txHash}`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+                    <span className={`pill ${t.status === 'confirmed' ? 'pill-teal' : 'pill-gold'}`}>
+                      {t.status?.toUpperCase()}
+                    </span>
+                  </a>
                 </div>
               </div>
             ))}
@@ -1094,12 +1110,117 @@ function TransfersTab({ transfers, totalCount, loading, search, setSearch, page,
   );
 }
 
+// ─── System Tab ───────────────────────────────────────────────────────────────
+function SystemTab({ status, loading, onPause, onUnpause, onUpdateMaxSupply, onUpdateMinRedeem, onManualMint }: {
+  status: ContractStatus | null; loading: boolean;
+  onPause: () => Promise<void>;
+  onUnpause: () => Promise<void>;
+  onUpdateMaxSupply: (amount: number) => Promise<void>;
+  onUpdateMinRedeem: (amount: number) => Promise<void>;
+  onManualMint: (to: string, amount: number, reason: string) => Promise<void>;
+}) {
+  const [newMax, setNewMax] = useState('');
+  const [newMin, setNewMin] = useState('');
+  const [mintTo, setMintTo] = useState('');
+  const [mintAmt, setMintAmt] = useState('');
+  const [mintReason, setMintReason] = useState('');
+  const [actionLoading, setActionLoading] = useState(false);
+
+  const handleManualMint = async () => {
+    if (!mintTo || !mintAmt) return;
+    setActionLoading(true);
+    await onManualMint(mintTo, Number(mintAmt), mintReason);
+    setActionLoading(false);
+    setMintTo(''); setMintAmt(''); setMintReason('');
+  };
+
+  return (
+    <div className="fade-up">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 24, paddingBottom: 20, borderBottom: '1px solid var(--border)' }}>
+        <div>
+          <p className="sec-eyebrow">Controls</p>
+          <h2 className="sec-h">Contract Management</h2>
+          <p className="sec-sub">Global configuration & emergency controls</p>
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 20 }}>
+        {/* Status Card */}
+        <div className="card" style={{ padding: 24 }}>
+          <div className="card-glow" style={{ '--glow-color': status?.paused ? 'var(--red)' : 'var(--teal)' } as any} />
+          <h3 style={{ fontFamily: 'var(--font-head)', fontSize: 18, fontWeight: 700, marginBottom: 16 }}>Operational Status</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+            <div style={{ width: 10, height: 10, borderRadius: '50%', background: status?.paused ? 'var(--red)' : 'var(--teal)', boxShadow: `0 0 10px ${status?.paused ? 'var(--red)' : 'var(--teal)'}` }} />
+            <span style={{ fontSize: 16, fontWeight: 700 }}>{status?.paused ? 'CONTRACT PAUSED' : 'SYSTEM OPERATIONAL'}</span>
+          </div>
+          <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 20 }}>
+            {status?.paused
+              ? 'All transfers, minting, and burning are currently disabled.'
+              : 'The contract is live. All functions are available to users.'}
+          </p>
+          {status?.paused ? (
+            <button className="btn-success" style={{ width: '100%' }} onClick={onUnpause} disabled={loading}>Resume Contract</button>
+          ) : (
+            <button className="btn-danger" style={{ width: '100%' }} onClick={onPause} disabled={loading}>Pause Contract</button>
+          )}
+        </div>
+
+        {/* Limits Card */}
+        <div className="card" style={{ padding: 24 }}>
+          <h3 style={{ fontFamily: 'var(--font-head)', fontSize: 18, fontWeight: 700, marginBottom: 16 }}>Supply & Redeems</h3>
+          <div style={{ marginBottom: 16 }}>
+            <label className="inp-label">Max Supply Cap</label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input className="inp" value={newMax} onChange={e => setNewMax(e.target.value)} placeholder={status?.maxSupply || '0'} />
+              <button className="btn-ghost" onClick={() => onUpdateMaxSupply(Number(newMax))}>Update</button>
+            </div>
+          </div>
+          <div>
+            <label className="inp-label">Min Redeem Amount</label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input className="inp" value={newMin} onChange={e => setNewMin(e.target.value)} placeholder={status?.minRedeem || '0'} />
+              <button className="btn-ghost" onClick={() => onUpdateMinRedeem(Number(newMin))}>Update</button>
+            </div>
+          </div>
+        </div>
+
+        {/* Manual Mint Card */}
+        <div className="card" style={{ padding: 24, gridColumn: '1 / -1' }}>
+          <h3 style={{ fontFamily: 'var(--font-head)', fontSize: 18, fontWeight: 700, marginBottom: 16 }}>Manual Minting (Admin Only)</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 12, alignItems: 'flex-end' }}>
+            <div>
+              <label className="inp-label">Recipient Wallet</label>
+              <input className="inp" placeholder="0x…" value={mintTo} onChange={e => setMintTo(e.target.value)} />
+            </div>
+            <div>
+              <label className="inp-label">Amount (GCN)</label>
+              <input className="inp" placeholder="0.00" value={mintAmt} onChange={e => setMintAmt(e.target.value)} />
+            </div>
+            <div>
+              <label className="inp-label">Reason</label>
+              <input className="inp" placeholder="Admin adjustment" value={mintReason} onChange={e => setMintReason(e.target.value)} />
+            </div>
+            <button className="btn-primary" onClick={handleManualMint} disabled={actionLoading || !mintTo || !mintAmt}>
+              {actionLoading ? <Loader2 size={14} className="spin" /> : <Zap size={14} />}
+              Mint Tokens
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Users Tab ────────────────────────────────────────────────────────────────
-function UsersTab({ users, totalCount, loading, search, setSearch, page, setPage, totalPages, copyToClipboard }: {
+function UsersTab({ users, totalCount, loading, search, setSearch, page, setPage, totalPages, copyToClipboard, onBlacklist, onUnblacklist, onVerifyKYC, onRevokeKYC }: {
   users: UserRecord[]; totalCount: number; loading: boolean;
   search: string; setSearch: (s: string) => void;
   page: number; setPage: (p: number) => void; totalPages: number;
   copyToClipboard: (t: string) => void;
+  onBlacklist: (wallet: string) => Promise<void>;
+  onUnblacklist: (wallet: string) => Promise<void>;
+  onVerifyKYC: (wallet: string) => Promise<void>;
+  onRevokeKYC: (wallet: string) => Promise<void>;
 }) {
   return (
     <div>
@@ -1128,19 +1249,16 @@ function UsersTab({ users, totalCount, loading, search, setSearch, page, setPage
       ) : (
         <>
           <div className="tbl">
-            <div className="tbl-head" style={{ gridTemplateColumns: '1fr 180px 100px 110px' }}>
-              {['Wallet', 'Email', 'Total Minted', 'Joined'].map(h => (
+            <div className="tbl-head" style={{ gridTemplateColumns: '1fr 120px 100px 100px 180px' }}>
+              {['Wallet', 'Minted', 'Status', 'KYC', 'Actions'].map(h => (
                 <div key={h} className="tbl-lbl">{h}</div>
               ))}
             </div>
             {users.map(u => (
-              <div key={u._id} className="crow tbl-row" style={{ gridTemplateColumns: '1fr 180px 100px 110px' }}>
+              <div key={u._id} className="crow tbl-row" style={{ gridTemplateColumns: '1fr 120px 100px 100px 180px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <span className="mono" style={{ fontSize: 11, color: 'var(--text2)' }}>{u.wallet?.slice(0, 14)}…{u.wallet?.slice(-6)}</span>
+                  <span className="mono" style={{ fontSize: 11, color: 'var(--text2)' }}>{u.wallet?.slice(0, 10)}…{u.wallet?.slice(-4)}</span>
                   <button className="copy-btn" onClick={() => copyToClipboard(u.wallet || '')}><Copy size={10} /></button>
-                </div>
-                <div>
-                  <span style={{ fontSize: 11, color: 'var(--text2)' }}>{u.email || '—'}</span>
                 </div>
                 <div>
                   <span style={{ fontFamily: 'var(--font-head)', fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>
@@ -1149,9 +1267,26 @@ function UsersTab({ users, totalCount, loading, search, setSearch, page, setPage
                   <span className="mono" style={{ fontSize: '9.5px', color: 'var(--text3)', marginLeft: 3 }}>GCN</span>
                 </div>
                 <div>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text3)' }}>
-                    {u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-IN') : '—'}
+                  <span className={`pill ${u.isBlacklisted ? 'pill-red' : 'pill-teal'}`}>
+                    {u.isBlacklisted ? 'BLACKLISTED' : 'ACTIVE'}
                   </span>
+                </div>
+                <div>
+                  <span className={`pill ${u.isKYCVerified ? 'pill-blue' : 'pill-muted'}`}>
+                    {u.isKYCVerified ? 'VERIFIED' : 'PENDING'}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {u.isBlacklisted ? (
+                    <button className="btn-ghost" style={{ padding: '4px 8px', fontSize: '10px' }} onClick={() => onUnblacklist(u.wallet)}>Unblacklist</button>
+                  ) : (
+                    <button className="btn-ghost" style={{ padding: '4px 8px', fontSize: '10px', color: 'var(--red)' }} onClick={() => onBlacklist(u.wallet)}>Blacklist</button>
+                  )}
+                  {u.isKYCVerified ? (
+                    <button className="btn-ghost" style={{ padding: '4px 8px', fontSize: '10px' }} onClick={() => onRevokeKYC(u.wallet)}>Revoke KYC</button>
+                  ) : (
+                    <button className="btn-ghost" style={{ padding: '4px 8px', fontSize: '10px', color: 'var(--blue)' }} onClick={() => onVerifyKYC(u.wallet)}>Verify KYC</button>
+                  )}
                 </div>
               </div>
             ))}
@@ -1189,6 +1324,7 @@ export default function AdminPage() {
   const [redeems,   setRedeems]   = useState<RedeemRequest[]>([]);
   const [transfers, setTransfers] = useState<TransferRecord[]>([]);
   const [users,     setUsers]     = useState<UserRecord[]>([]);
+  const [contractStatus, setContractStatus] = useState<ContractStatus | null>(null);
 
   const [statsLoading, setStatsLoading] = useState(false);
   const [tabLoading,   setTabLoading]   = useState(false);
@@ -1259,6 +1395,139 @@ export default function AdminPage() {
       setTabLoading(false);
     }
   }, []);
+
+  const fetchContractStatus = useCallback(async () => {
+    if (!keyRef.current) return;
+    setTabLoading(true);
+    try {
+      const { data } = await axios.get(`${API_URL}/api/admin/contract-status`, {
+        headers: { 'x-admin-key': keyRef.current },
+      });
+      setContractStatus(data.status);
+    } catch (err: any) {
+      toast.add('error', 'Failed to load contract status');
+    } finally {
+      setTabLoading(false);
+    }
+  }, []);
+
+  const pauseContract = async () => {
+    const tid = toast.add('loading', 'Pausing contract…');
+    try {
+      await axios.post(`${API_URL}/api/admin/contract/pause`, {}, { headers: { 'x-admin-key': keyRef.current } });
+      toast.remove(tid);
+      toast.add('success', 'Contract paused');
+      fetchContractStatus();
+    } catch (err: any) {
+      toast.remove(tid);
+      toast.add('error', 'Pause failed');
+    }
+  };
+
+  const unpauseContract = async () => {
+    const tid = toast.add('loading', 'Unpausing contract…');
+    try {
+      await axios.post(`${API_URL}/api/admin/contract/unpause`, {}, { headers: { 'x-admin-key': keyRef.current } });
+      toast.remove(tid);
+      toast.add('success', 'Contract unpaused');
+      fetchContractStatus();
+    } catch (err: any) {
+      toast.remove(tid);
+      toast.add('error', 'Unpause failed');
+    }
+  };
+
+  const updateMaxSupply = async (amount: number) => {
+    const tid = toast.add('loading', 'Updating max supply…');
+    try {
+      await axios.post(`${API_URL}/api/admin/contract/max-supply`, { amount }, { headers: { 'x-admin-key': keyRef.current } });
+      toast.remove(tid);
+      toast.add('success', 'Max supply updated');
+      fetchContractStatus();
+    } catch (err: any) {
+      toast.remove(tid);
+      toast.add('error', 'Update failed');
+    }
+  };
+
+  const updateMinRedeem = async (amount: number) => {
+    const tid = toast.add('loading', 'Updating min redeem…');
+    try {
+      await axios.post(`${API_URL}/api/admin/contract/min-redeem`, { amount }, { headers: { 'x-admin-key': keyRef.current } });
+      toast.remove(tid);
+      toast.add('success', 'Min redeem updated');
+      fetchContractStatus();
+    } catch (err: any) {
+      toast.remove(tid);
+      toast.add('error', 'Update failed');
+    }
+  };
+
+  const manualMint = async (to: string, amount: number, reason: string) => {
+    const tid = toast.add('loading', 'Minting tokens…');
+    try {
+      await axios.post(`${API_URL}/api/admin/contract/mint`, { to, amount, reason }, { headers: { 'x-admin-key': keyRef.current } });
+      toast.remove(tid);
+      toast.add('success', `Minted ${amount} GCN to ${to}`);
+      fetchStats();
+      fetchContractStatus();
+    } catch (err: any) {
+      toast.remove(tid);
+      toast.add('error', 'Mint failed');
+    }
+  };
+
+  const blacklistUser = async (wallet: string) => {
+    const tid = toast.add('loading', 'Blacklisting user…');
+    try {
+      await axios.post(`${API_URL}/api/admin/users/${wallet}/blacklist`, {}, { headers: { 'x-admin-key': keyRef.current } });
+      toast.remove(tid);
+      toast.add('success', 'User blacklisted');
+      fetchUsers();
+    } catch (err: any) {
+      toast.remove(tid);
+      toast.add('error', 'Blacklist failed');
+    }
+  };
+
+  const unblacklistUser = async (wallet: string) => {
+    const tid = toast.add('loading', 'Unblacklisting user…');
+    try {
+      await axios.post(`${API_URL}/api/admin/users/${wallet}/unblacklist`, {}, { headers: { 'x-admin-key': keyRef.current } });
+      toast.remove(tid);
+      toast.add('success', 'User unblacklisted');
+      fetchUsers();
+    } catch (err: any) {
+      toast.remove(tid);
+      toast.add('error', 'Unblacklist failed');
+    }
+  };
+
+  const verifyKYC = async (wallet: string) => {
+    const tid = toast.add('loading', 'Verifying KYC…');
+    try {
+      await axios.post(`${API_URL}/api/admin/users/${wallet}/verify-kyc`, {}, { headers: { 'x-admin-key': keyRef.current } });
+      toast.remove(tid);
+      toast.add('success', 'KYC verified');
+      fetchUsers();
+    } catch (err: any) {
+      toast.remove(tid);
+      toast.add('error', 'KYC verification failed');
+    }
+  };
+
+  const revokeKYC = async (wallet: string) => {
+    const tid = toast.add('loading', 'Revoking KYC…');
+    try {
+      await axios.post(`${API_URL}/api/admin/users/${wallet}/revoke-kyc`, {}, { headers: { 'x-admin-key': keyRef.current } });
+      toast.remove(tid);
+      toast.add('success', 'KYC revoked');
+      fetchUsers();
+    } catch (err: any) {
+      toast.remove(tid);
+      toast.add('error', 'KYC revocation failed');
+    }
+  };
 
   const fetchTransfers = useCallback(async () => {
     if (!keyRef.current) return;
@@ -1385,6 +1654,7 @@ export default function AdminPage() {
     if (activeTab === 'redeems')   fetchRedeems();
     if (activeTab === 'transfers') fetchTransfers();
     if (activeTab === 'users')     fetchUsers();
+    if (activeTab === 'system')    fetchContractStatus();
   }, [activeTab, isAuth]);
 
   const copyToClipboard = (text: string) => {
@@ -1417,6 +1687,7 @@ export default function AdminPage() {
     { key: 'redeems',   label: 'Redeems',   icon: ArrowDownUp, badge: stats?.pendingRedeems },
     { key: 'transfers', label: 'Transfers',  icon: Send },
     { key: 'users',     label: 'Users',      icon: Users },
+    { key: 'system',    label: 'System',     icon: Shield },
   ];
 
   const tabTitles: Record<Tab, { title: string; sub: string }> = {
@@ -1424,6 +1695,7 @@ export default function AdminPage() {
     redeems:   { title: 'Redeems',   sub: 'Manage GCN redemption requests' },
     transfers: { title: 'Transfers', sub: 'On-chain P2P transfer history' },
     users:     { title: 'Users',     sub: 'Registered wallet registry' },
+    system:    { title: 'System',    sub: 'Contract status & global controls' },
   };
 
   // ── Login screen ───────────────────────────────────────────────────────────
@@ -1646,6 +1918,21 @@ export default function AdminPage() {
               setPage={setUserPage}
               totalPages={pagesU}
               copyToClipboard={copyToClipboard}
+              onBlacklist={blacklistUser}
+              onUnblacklist={unblacklistUser}
+              onVerifyKYC={verifyKYC}
+              onRevokeKYC={revokeKYC}
+            />
+          )}
+          {activeTab === 'system' && (
+            <SystemTab
+              status={contractStatus}
+              loading={tabLoading}
+              onPause={pauseContract}
+              onUnpause={unpauseContract}
+              onUpdateMaxSupply={updateMaxSupply}
+              onUpdateMinRedeem={updateMinRedeem}
+              onManualMint={manualMint}
             />
           )}
         </main>
