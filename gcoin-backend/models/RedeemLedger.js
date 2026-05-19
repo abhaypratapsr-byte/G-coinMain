@@ -38,7 +38,6 @@ const redeemLedgerSchema = new mongoose.Schema(
   }
 );
 
-module.exports = mongoose.model(
-  'RedeemLedger',
-  redeemLedgerSchema
-);
+module.exports =
+  mongoose.models.RedeemLedger ||
+  mongoose.model('RedeemLedger', redeemLedgerSchema);
