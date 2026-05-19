@@ -415,9 +415,16 @@ router.post('/retry-mint/:id', async (req, res) => {
     return res.status(400).json({ message: 'Invalid payment' });
   }
 
-  await mintQueue.add('mint', {
-    paymentId: payment._id
+  if (!mintQueue) {
+  return res.status(503).json({
+    success: false,
+    message: 'Mint queue unavailable'
   });
+}
+
+await mintQueue.add('mint', {
+  paymentId: payment._id
+});
 
   res.json({ success: true });
 });
