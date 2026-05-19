@@ -1,11 +1,23 @@
 require('dotenv').config();
 const IORedis = require('ioredis');
 
-// Temporarily disable Redis connection for MVP
-// const connection = new IORedis(process.env.REDIS_URL, {
-//   maxRetriesPerRequest: null
-// });
+let connection = null;
 
-const connection = null; // Disabled
+if (process.env.REDIS_URL) {
+  connection = new IORedis(process.env.REDIS_URL, {
+    maxRetriesPerRequest: null,
+  });
+
+  connection.on('connect', () => {
+    console.log('✅ Redis connected');
+  });
+
+  connection.on('error', (err) => {
+    console.log('❌ Redis error:', err.message);
+  });
+
+} else {
+  console.log('⚠️ Redis connection is disabled.');
+}
 
 module.exports = connection;
