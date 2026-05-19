@@ -181,10 +181,16 @@ export default function GCoinPortal() {
   }
 };
   // ── Redeem flow ───────────────────────────────────────────────────────────────
-  const handleRedeem = async () => {
+  const handleRedeem = async (bankDetails) => {
     if (!wallet) return
     const numAmount = Number(amount)
     if (!numAmount || numAmount <= 0) return
+
+    if (!bankDetails || !bankDetails.accountHolderName || !bankDetails.bankName || !bankDetails.accountNumber || !bankDetails.ifsc) {
+      setRedeemErrorMsg("Please provide complete bank details to redeem.")
+      setRedeemStep("error")
+      return
+    }
 
     setRedeemStep("processing")
     setRedeemErrorMsg("")
@@ -193,7 +199,7 @@ export default function GCoinPortal() {
       const res = await fetch(`${BACKEND}/api/redeem/request`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ wallet, amount: numAmount }),
+        body: JSON.stringify({ wallet, amount: numAmount, bankDetails }),
       })
 
       if (!res.ok) {

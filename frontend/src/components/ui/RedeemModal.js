@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useEffect, useState } from "react"
 
 const getModalTitle = (redeemStep) => {
   if (redeemStep === "idle") return "Confirm Redeem"
@@ -24,9 +24,49 @@ export const RedeemModal = ({
   onConfirm,
   formatWallet
 }) => {
+  const [bankDetails, setBankDetails] = useState({
+    accountHolderName: "",
+    bankName: "",
+    accountNumber: "",
+    ifsc: ""
+  })
+  const [formError, setFormError] = useState("")
+
+  useEffect(() => {
+    if (!show || redeemStep === "success") {
+      setBankDetails({
+        accountHolderName: "",
+        bankName: "",
+        accountNumber: "",
+        ifsc: ""
+      })
+      setFormError("")
+    }
+  }, [show, redeemStep])
+
   if (!show) return null
 
   const canClose = redeemStep !== "processing"
+
+  const handleConfirm = () => {
+    if (redeemStep !== "idle") {
+      onConfirm(bankDetails)
+      return
+    }
+
+    const { accountHolderName, bankName, accountNumber, ifsc } = bankDetails
+    if (!accountHolderName || !bankName || !accountNumber || !ifsc) {
+      setFormError("Enter all bank details before confirming redeem.")
+      return
+    }
+
+    setFormError("")
+    onConfirm(bankDetails)
+  }
+
+  const updateField = (field, value) => {
+    setBankDetails(prev => ({ ...prev, [field]: value }))
+  }
 
   return (
     <div className="modal-backdrop" onClick={canClose ? onClose : undefined}>
@@ -67,10 +107,55 @@ export const RedeemModal = ({
                 <span className="mval">1–2 business days</span>
               </div>
             </div>
+
+            <div className="modal-body">
+              <div className="modal-field">
+                <span className="input-label">Account Holder Name</span>
+                <input
+                  className="modal-input"
+                  type="text"
+                  value={bankDetails.accountHolderName}
+                  onChange={e => updateField("accountHolderName", e.target.value)}
+                  placeholder="e.g. Rahul Sharma"
+                />
+              </div>
+              <div className="modal-field">
+                <span className="input-label">Bank Name</span>
+                <input
+                  className="modal-input"
+                  type="text"
+                  value={bankDetails.bankName}
+                  onChange={e => updateField("bankName", e.target.value)}
+                  placeholder="e.g. HDFC Bank"
+                />
+              </div>
+              <div className="modal-field">
+                <span className="input-label">Account Number</span>
+                <input
+                  className="modal-input"
+                  type="text"
+                  value={bankDetails.accountNumber}
+                  onChange={e => updateField("accountNumber", e.target.value)}
+                  placeholder="e.g. 123456789012"
+                />
+              </div>
+              <div className="modal-field">
+                <span className="input-label">IFSC Code</span>
+                <input
+                  className="modal-input"
+                  type="text"
+                  value={bankDetails.ifsc}
+                  onChange={e => updateField("ifsc", e.target.value.toUpperCase())}
+                  placeholder="e.g. HDFC0001234"
+                />
+              </div>
+              {formError && <div className="modal-form-error">{formError}</div>}
+            </div>
+
             <div className="modal-note">⚠ Tokens burned immediately · INR payout via admin within 1–2 business days</div>
             <div className="modal-actions">
               <button className="mbtn-cancel" onClick={onClose}>Cancel</button>
-              <button className="mbtn-confirm" onClick={onConfirm}>Confirm Redeem</button>
+              <button className="mbtn-confirm" onClick={handleConfirm}>Confirm Redeem</button>
             </div>
           </>
         )}
@@ -99,7 +184,7 @@ export const RedeemModal = ({
             <div className="e-msg">{redeemErrorMsg || "Something went wrong. Please try again."}</div>
             <div className="modal-actions">
               <button className="mbtn-cancel" onClick={onClose}>Close</button>
-              <button className="mbtn-confirm" onClick={onConfirm}>Try Again</button>
+              <button className="mbtn-confirm" onClick={handleConfirm}>Try Again</button>
             </div>
           </div>
         )}
