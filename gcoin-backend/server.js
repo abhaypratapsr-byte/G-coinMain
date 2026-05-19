@@ -1,7 +1,7 @@
 const dotenv = require('dotenv');
 dotenv.config();
 
-// require('./workers/payoutWorker');
+require('./workers/payoutWorker');
 // require('./workers/mintWorker');
 
 const express = require('express');
@@ -165,11 +165,9 @@ const startServer = async () => {
 
     await blockchainService.initialize();
     console.log('✅ Blockchain service initialized');
-    // const { startMintWorker }     = require('./services/mintQueue');
-    // const { startRedeemListener } = require('./services/redeemListener');
-    // startMintWorker();
-    // startRedeemListener();
-    // console.log('✅ Mint worker and redeem listener started');
+    const { startRedeemListener } = require('./services/redeemListener');
+    startRedeemListener();
+    console.log('✅ Redeem listener started');
 
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`\n✅ Server running on port ${PORT}`);

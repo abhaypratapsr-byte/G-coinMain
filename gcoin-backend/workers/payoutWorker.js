@@ -55,7 +55,7 @@ const worker = new Worker(
   throw new Error("Invalid payout response");
 }
 
-redeem.payoutId = payout.transferId || referenceId;
+redeem.payoutId = payout.transferId || redeemId;
       redeem.status = 'completed';
       await redeem.save();
 

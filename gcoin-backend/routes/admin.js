@@ -8,8 +8,8 @@ const User = require('../models/User');
 const blockchainService = require('../services/blockchain');
 const payoutService = require('../services/payout');
 const { adminAuth } = require('../middleware/auth');
-// const payoutQueue = require('../queues/queue');
-// const mintQueue = require('../queues/mintQueue');
+const payoutQueue = require('../queues/queue');
+const mintQueue = require('../queues/mintQueue');
 const MintLedger   = require('../middleware/MintLedger');
 const RedeemLedger = require('../middleware/RedeemLedger');
 
@@ -291,22 +291,22 @@ redeem.paymentRef = paymentRef;
 await redeem.save();
 
 
-// await payoutQueue.add(
-//   'payout',
-//   {
-//     redeemId: redeem._id,
-//     wallet: redeem.wallet,
-//     amount: redeem.amount,
-//     bankDetails: redeem.bankDetails
-//   },
-//   {
-//     attempts: 5,
-//     backoff: {
-//       type: 'exponential',
-//       delay: 5000
-//     }
-//   }
-// );
+await payoutQueue.add(
+  'payout',
+  {
+    redeemId: redeem._id.toString(),
+    wallet: redeem.wallet,
+    amount: redeem.amount,
+    bankDetails: redeem.bankDetails
+  },
+  {
+    attempts: 5,
+    backoff: {
+      type: 'exponential',
+      delay: 5000
+    }
+  }
+);
     // ✅ Audit log
     const AuditLog = require('../models/AuditLog');
     await AuditLog.create({
