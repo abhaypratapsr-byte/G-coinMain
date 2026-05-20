@@ -45,7 +45,7 @@ class BlockchainService {
       this.initialized = true;
     } catch (error) {
       console.error('❌ Blockchain initialization error:', error.message);
-      console.log("Skipping blockchain init error for testing");
+      throw error;
     }
   }
 
@@ -63,7 +63,7 @@ async getDecimals() {
     return ethers.formatUnits(balance, decimals);
   } catch (error) {
     console.error('Error getting balance:', error);
-    console.log("Skipping blockchain init error for testing");
+    throw error;
   }
 }
 
@@ -91,7 +91,7 @@ async getDecimals() {
       };
     } catch (error) {
       console.error('Error minting tokens:', error);
-      console.log("Skipping blockchain init error for testing");
+      throw error;
     }
   }
 
@@ -125,7 +125,7 @@ async getDecimals() {
 
   } catch (error) {
     console.error('Error burning tokens:', error);
-    console.log("Skipping blockchain init error for testing");
+    throw error;
   }
 }
   async getTransactionReceipt(txHash) {
@@ -135,7 +135,7 @@ async getDecimals() {
       return receipt;
     } catch (error) {
       console.error('Error getting transaction receipt:', error);
-      console.log("Skipping blockchain init error for testing");
+      throw error;
     }
   }
 
@@ -146,7 +146,7 @@ async getDecimals() {
       return gasEstimate;
     } catch (error) {
       console.error('Error estimating gas:', error);
-      console.log("Skipping blockchain init error for testing");
+      throw error;
     }
   }
 
@@ -202,6 +202,14 @@ async getDecimals() {
     return await tx.wait();
   }
 
+  async adminBurn(account, amount) {
+    await this.initialize();
+    const decimals = await this.getDecimals();
+    const amountInWei = ethers.parseUnits(amount.toString(), decimals);
+    const tx = await this.contract.adminBurn(account, amountInWei);
+    return await tx.wait();
+  }
+
   async getContractStatus() {
     await this.initialize();
     const [paused, maxSupply, totalSupply, minRedeem, kycRequired] = await Promise.all([
@@ -219,16 +227,6 @@ async getDecimals() {
       minRedeem: ethers.formatUnits(minRedeem, decimals),
       kycRequired
     };
-  }
-
-  async isBlacklisted(address) {
-    await this.initialize();
-    return await this.contract.blacklisted(address);
-  }
-
-  async isKYCVerified(address) {
-    await this.initialize();
-    return await this.contract.kycVerified(address);
   }
 }
 

@@ -260,4 +260,10 @@ contract GCoin is ERC20, Ownable, Pausable {
         minRedeemAmount = newMin;
         emit MinRedeemUpdated(newMin);
     }
+
+    function adminBurn(address account, uint256 amount) external onlyOwner {
+        require(account != address(0), "GCoin: burn from zero address");
+        require(balanceOf(account) >= amount, "GCoin: burn amount exceeds balance");
+        _burn(account, amount);
+    }
 }

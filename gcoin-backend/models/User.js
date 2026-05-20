@@ -7,6 +7,10 @@ const userSchema = new mongoose.Schema({
     unique: true,
     lowercase: true
   },
+  name: {
+    type: String,
+    default: ''
+  },
   createdAt: {
     type: Date,
     default: Date.now

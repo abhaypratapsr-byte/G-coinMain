@@ -202,6 +202,31 @@ router.post('/contract/mint', async (req, res) => {
   }
 });
 
+// Admin Manual Burn
+router.post('/users/:wallet/burn', async (req, res) => {
+  try {
+    const { wallet } = req.params;
+    const { amount, reason = 'Admin manual burn' } = req.body;
+
+    if (!amount) {
+      return res.status(400).json({ success: false, message: 'Amount required' });
+    }
+
+    const receipt = await blockchainService.adminBurn(wallet, amount);
+
+    const AuditLog = require('../models/AuditLog');
+    await AuditLog.create({
+      action: 'ADMIN_MANUAL_BURN',
+      user: wallet,
+      data: { amount, txHash: receipt.hash, reason }
+    });
+
+    res.json({ success: true, txHash: receipt.hash });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // Get all pending redeems
 router.get('/redeems/pending', async (req, res) => {
   try {
@@ -381,6 +406,19 @@ router.get('/users', async (req, res) => {
       message: 'Failed to fetch users',
       error: error.message
     });
+  }
+});
+
+// Get Audit Logs
+router.get('/audit-logs', async (req, res) => {
+  try {
+    const AuditLog = require('../models/AuditLog');
+    const logs = await AuditLog.find()
+      .sort({ createdAt: -1 })
+      .limit(20);
+    res.json({ success: true, logs });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
