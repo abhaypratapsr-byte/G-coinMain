@@ -51,6 +51,7 @@ interface TransferRecord {
 interface UserRecord {
   _id: string;
   wallet: string;
+  name?: string;
   email?: string;
   totalMinted?: number;
   createdAt?: string;
@@ -750,8 +751,8 @@ function StatCard({ label, value, icon: Icon, accent, sub }: {
 }
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
-function DashboardTab({ stats, loading, onRefresh }: {
-  stats: Stats | null; loading: boolean; onRefresh: () => void;
+function DashboardTab({ stats, auditLogs, loading, onRefresh }: {
+  stats: Stats | null; auditLogs: any[]; loading: boolean; onRefresh: () => void;
 }) {
   return (
     <div>
@@ -798,6 +799,50 @@ function DashboardTab({ stats, loading, onRefresh }: {
           <div style={{ marginLeft: 'auto', fontFamily: 'var(--font-mono)', fontSize: '9.5px', color: 'var(--text3)' }}>
             Contract: 0xa088…943f
           </div>
+        </div>
+      </div>
+
+      {/* Global Activity Feed */}
+      <div className="card" style={{ padding: 24, marginTop: 24 }}>
+        <div className="card-glow" style={{ '--glow-color': 'var(--blue)' } as any} />
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Activity size={18} color="var(--blue)" />
+            <h3 style={{ fontFamily: 'var(--font-head)', fontSize: 18, fontWeight: 700 }}>Global Activity Feed</h3>
+          </div>
+          <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--font-mono)' }}>LIVE UPDATES</span>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {auditLogs.length === 0 ? (
+            <p style={{ textAlign: 'center', color: 'var(--text3)', padding: '20px 0', fontSize: 12 }}>No recent activity.</p>
+          ) : auditLogs.map((log, i) => {
+            const isMint = log.action === 'MINTED' || log.action === 'ADMIN_MANUAL_MINT';
+            const isBurn = log.action === 'ADMIN_MANUAL_BURN' || log.action === 'REDEEM_COMPLETED';
+            const color = isMint ? 'var(--teal)' : isBurn ? 'var(--red)' : 'var(--blue)';
+            return (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 14px', background: 'var(--surface2)', borderRadius: 12, border: '1px solid var(--border)' }}>
+                <div style={{ width: 32, height: 32, borderRadius: 8, background: `${color}15`, border: `1px solid ${color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: 4, height: 4, borderRadius: '50%', background: color }} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>
+                    {log.action.replace(/_/g, ' ')}: {log.user?.slice(0, 10)}…
+                  </p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+                    <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--font-mono)' }}>{log.action}</span>
+                    <div style={{ width: 3, height: 3, borderRadius: '50%', background: 'var(--text3)', opacity: 0.3 }} />
+                    <span style={{ fontSize: 10, color: 'var(--text3)' }}>{new Date(log.createdAt).toLocaleTimeString()}</span>
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <p style={{ fontSize: 13, fontWeight: 700, color: isMint ? 'var(--teal)' : isBurn ? 'var(--red)' : 'var(--text)' }}>
+                    {log.data?.amount ? `${isMint ? '+' : isBurn ? '-' : ''}${log.data.amount.toLocaleString()} GCN` : '—'}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
@@ -892,12 +937,9 @@ function RedeemsTab({ redeems, totalCount, loading, onComplete, onReject, refres
                             <Copy size={11} />
                           </button>
                         </div>
-                      {/* @ts-ignore */}
-                      <a href={r.burnTxHash ? `https://polygonscan.com/tx/${r.burnTxHash}` : '#'} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
                         <span className={`pill ${r.status === 'completed' ? 'pill-teal' : r.status === 'failed' ? 'pill-red' : 'pill-gold'}`}>
                           {r.status?.toUpperCase() || 'PENDING'}
                         </span>
-                      </a>
                         {r.createdAt && (
                           <span style={{ marginLeft: 8, fontFamily: 'var(--font-mono)', fontSize: '9.5px', color: 'var(--text3)' }}>
                             {new Date(r.createdAt).toLocaleDateString('en-IN')}
@@ -1080,12 +1122,9 @@ function TransfersTab({ transfers, totalCount, loading, search, setSearch, page,
                   <span className="mono" style={{ fontSize: '9.5px', color: 'var(--text3)', marginLeft: 3 }}>GCN</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'center' }}>
-                  {/* @ts-ignore */}
-                  <a href={`https://polygonscan.com/tx/${t.txHash}`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
-                    <span className={`pill ${t.status === 'confirmed' ? 'pill-teal' : 'pill-gold'}`}>
-                      {t.status?.toUpperCase()}
-                    </span>
-                  </a>
+                  <span className={`pill ${t.status === 'confirmed' ? 'pill-teal' : 'pill-gold'}`}>
+                    {t.status?.toUpperCase()}
+                  </span>
                 </div>
               </div>
             ))}
@@ -1212,7 +1251,7 @@ function SystemTab({ status, loading, onPause, onUnpause, onUpdateMaxSupply, onU
 }
 
 // ─── Users Tab ────────────────────────────────────────────────────────────────
-function UsersTab({ users, totalCount, loading, search, setSearch, page, setPage, totalPages, copyToClipboard, onBlacklist, onUnblacklist, onVerifyKYC, onRevokeKYC }: {
+function UsersTab({ users, totalCount, loading, search, setSearch, page, setPage, totalPages, copyToClipboard, onBlacklist, onUnblacklist, onVerifyKYC, onRevokeKYC, onBurn }: {
   users: UserRecord[]; totalCount: number; loading: boolean;
   search: string; setSearch: (s: string) => void;
   page: number; setPage: (p: number) => void; totalPages: number;
@@ -1221,7 +1260,10 @@ function UsersTab({ users, totalCount, loading, search, setSearch, page, setPage
   onUnblacklist: (wallet: string) => Promise<void>;
   onVerifyKYC: (wallet: string) => Promise<void>;
   onRevokeKYC: (wallet: string) => Promise<void>;
+  onBurn: (wallet: string, amount: number) => Promise<void>;
 }) {
+  const [burnWallet, setBurnWallet] = useState<string | null>(null);
+  const [burnAmount, setBurnAmount] = useState('');
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 12, marginBottom: 24, paddingBottom: 20, borderBottom: '1px solid var(--border)' }}>
@@ -1249,15 +1291,18 @@ function UsersTab({ users, totalCount, loading, search, setSearch, page, setPage
       ) : (
         <>
           <div className="tbl">
-            <div className="tbl-head" style={{ gridTemplateColumns: '1fr 120px 100px 100px 180px' }}>
-              {['Wallet', 'Minted', 'Status', 'KYC', 'Actions'].map(h => (
+            <div className="tbl-head" style={{ gridTemplateColumns: '1.2fr 1.2fr 100px 100px 100px 220px' }}>
+              {['Name', 'Wallet', 'Minted', 'Status', 'KYC', 'Actions'].map(h => (
                 <div key={h} className="tbl-lbl">{h}</div>
               ))}
             </div>
             {users.map(u => (
-              <div key={u._id} className="crow tbl-row" style={{ gridTemplateColumns: '1fr 120px 100px 100px 180px' }}>
+              <div key={u._id} className="crow tbl-row" style={{ gridTemplateColumns: '1.2fr 1.2fr 100px 100px 100px 220px' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{u.name || 'Anonymous User'}</span>
+                </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <span className="mono" style={{ fontSize: 11, color: 'var(--text2)' }}>{u.wallet?.slice(0, 10)}…{u.wallet?.slice(-4)}</span>
+                  <span className="mono" style={{ fontSize: 11, color: 'var(--text2)' }}>{u.wallet?.slice(0, 12)}…{u.wallet?.slice(-4)}</span>
                   <button className="copy-btn" onClick={() => copyToClipboard(u.wallet || '')}><Copy size={10} /></button>
                 </div>
                 <div>
@@ -1287,10 +1332,42 @@ function UsersTab({ users, totalCount, loading, search, setSearch, page, setPage
                   ) : (
                     <button className="btn-ghost" style={{ padding: '4px 8px', fontSize: '10px', color: 'var(--blue)' }} onClick={() => onVerifyKYC(u.wallet)}>Verify KYC</button>
                   )}
+                  <button className="btn-ghost" style={{ padding: '4px 8px', fontSize: '10px', border: '1px solid var(--red-dim)', color: 'var(--red)' }} onClick={() => setBurnWallet(u.wallet)}>
+                    Burn
+                  </button>
                 </div>
               </div>
             ))}
           </div>
+
+          {/* Burn Modal */}
+          <ConfirmModal
+            open={!!burnWallet}
+            title="Manual Token Burn"
+            body={`Enter the amount of GCN to burn from ${burnWallet?.slice(0, 8)}… . This action is IRREVERSIBLE.`}
+            confirmLabel="Confirm Burn"
+            danger
+            onConfirm={() => {
+              if (burnWallet) onBurn(burnWallet, Number(burnAmount));
+              setBurnWallet(null);
+              setBurnAmount('');
+            }}
+            onCancel={() => {
+              setBurnWallet(null);
+              setBurnAmount('');
+            }}
+          >
+            <div>
+              <label className="inp-label">Amount (GCN)</label>
+              <input
+                className="inp"
+                placeholder="0.00"
+                value={burnAmount}
+                onChange={e => setBurnAmount(e.target.value)}
+                style={{ marginBottom: 20 }}
+              />
+            </div>
+          </ConfirmModal>
 
           {totalPages > 1 && (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 24, paddingTop: 18, borderTop: '1px solid var(--border)' }}>
@@ -1324,6 +1401,7 @@ export default function AdminPage() {
   const [redeems,   setRedeems]   = useState<RedeemRequest[]>([]);
   const [transfers, setTransfers] = useState<TransferRecord[]>([]);
   const [users,     setUsers]     = useState<UserRecord[]>([]);
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [contractStatus, setContractStatus] = useState<ContractStatus | null>(null);
 
   const [statsLoading, setStatsLoading] = useState(false);
@@ -1363,6 +1441,18 @@ export default function AdminPage() {
       totalTransfers: s.totalTransfers ?? s.transfers    ?? 0,
     };
   };
+
+  const fetchAuditLogs = useCallback(async () => {
+    if (!keyRef.current) return;
+    try {
+      const { data } = await axios.get(`${API_URL}/api/admin/audit-logs`, {
+        headers: { 'x-admin-key': keyRef.current },
+      });
+      setAuditLogs(data.logs || []);
+    } catch (err) {
+      console.error('Failed to fetch audit logs');
+    }
+  }, []);
 
   const fetchStats = useCallback(async (key?: string) => {
     const k = key || keyRef.current;
@@ -1529,6 +1619,20 @@ export default function AdminPage() {
     }
   };
 
+  const burnTokens = async (wallet: string, amount: number) => {
+    const tid = toast.add('loading', `Burning ${amount} GCN from ${wallet.slice(0, 8)}…`);
+    try {
+      await axios.post(`${API_URL}/api/admin/users/${wallet}/burn`, { amount }, { headers: { 'x-admin-key': keyRef.current } });
+      toast.remove(tid);
+      toast.add('success', `Successfully burned ${amount} GCN`);
+      fetchUsers();
+      fetchStats();
+    } catch (err: any) {
+      toast.remove(tid);
+      toast.add('error', err.response?.data?.message || 'Burn failed');
+    }
+  };
+
   const fetchTransfers = useCallback(async () => {
     if (!keyRef.current) return;
     setTabLoading(true);
@@ -1637,15 +1741,19 @@ export default function AdminPage() {
     }
   };
 
-  // Auto-refresh stats every 30s while on dashboard
+  // Auto-refresh stats and logs every 30s while on dashboard
   useEffect(() => {
     if (!isAuth) return;
     fetchStats();
+    fetchAuditLogs();
     const interval = setInterval(() => {
-      if (!document.hidden) fetchStats();
+      if (!document.hidden) {
+        fetchStats();
+        fetchAuditLogs();
+      }
     }, 30000);
     return () => clearInterval(interval);
-  }, [isAuth]);
+  }, [isAuth, fetchAuditLogs]);
 
   // Fetch on tab switch
   useEffect(() => {
@@ -1876,7 +1984,7 @@ export default function AdminPage() {
         {/* Page content */}
         <main className="page-content">
           {activeTab === 'dashboard' && (
-            <DashboardTab stats={stats} loading={statsLoading} onRefresh={fetchStats} />
+            <DashboardTab stats={stats} auditLogs={auditLogs} loading={statsLoading} onRefresh={fetchStats} />
           )}
           {activeTab === 'redeems' && (
             <RedeemsTab
@@ -1918,21 +2026,6 @@ export default function AdminPage() {
               setPage={setUserPage}
               totalPages={pagesU}
               copyToClipboard={copyToClipboard}
-              onBlacklist={blacklistUser}
-              onUnblacklist={unblacklistUser}
-              onVerifyKYC={verifyKYC}
-              onRevokeKYC={revokeKYC}
-            />
-          )}
-          {activeTab === 'system' && (
-            <SystemTab
-              status={contractStatus}
-              loading={tabLoading}
-              onPause={pauseContract}
-              onUnpause={unpauseContract}
-              onUpdateMaxSupply={updateMaxSupply}
-              onUpdateMinRedeem={updateMinRedeem}
-              onManualMint={manualMint}
             />
           )}
         </main>
