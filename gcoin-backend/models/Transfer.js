@@ -4,12 +4,14 @@ const transferSchema = new mongoose.Schema({
   from: {
     type: String,
     required: true,
-    lowercase: true
+    lowercase: true,
+    index: true
   },
   to: {
     type: String,
     required: true,
-    lowercase: true
+    lowercase: true,
+    index: true
   },
   amount: {
     type: Number,
@@ -23,7 +25,8 @@ const transferSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: ['pending', 'confirmed', 'failed'],
-    default: 'pending'
+    default: 'pending',
+    index: true
   },
   createdAt: {
     type: Date,
