@@ -1,0 +1,3 @@
+## 2025-05-15 - [Database Indexing and Pagination]
+**Learning:** Found that core transaction tables (Payment, Redeem, Transfer) were missing indexes on frequently queried fields like `wallet` and `status`, which would lead to performance degradation as the user base grows. Also identified a lack of pagination on the user transactions endpoint, which could lead to large payloads.
+**Action:** Added database indexes to `wallet`, `status`, `from`, and `to` fields across all transaction-related models. Implemented limit/offset pagination on the user transactions API route to ensure efficient data retrieval and transfer.

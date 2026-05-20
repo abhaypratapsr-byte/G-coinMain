@@ -4,7 +4,8 @@ const redeemSchema = new mongoose.Schema({
   wallet: {
     type: String,
     required: true,
-    lowercase: true
+    lowercase: true,
+    index: true
   },
   amount: {
     type: Number,
@@ -23,7 +24,8 @@ const redeemSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: ['pending', 'processing', 'completed', 'failed'],
-    default: 'pending'
+    default: 'pending',
+    index: true
   },
   burnTxHash: {
     type: String

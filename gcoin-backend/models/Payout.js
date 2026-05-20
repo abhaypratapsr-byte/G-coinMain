@@ -9,7 +9,8 @@ const payoutSchema = new mongoose.Schema({
   wallet: {
     type: String,
     required: true,
-    lowercase: true
+    lowercase: true,
+    index: true
   },
   amount: {
     type: Number,
@@ -29,7 +30,8 @@ const payoutSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: ['pending', 'processing', 'processed', 'failed', 'reversed'],
-    default: 'pending'
+    default: 'pending',
+    index: true
   },
 
   failureReason: String,

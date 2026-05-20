@@ -48,17 +48,26 @@ router.get('/profile/:wallet', async (req, res) => {
 router.get('/transactions/:wallet', async (req, res) => {
   try {
     const { wallet } = req.params;
+    const { limit = 200, offset = 0 } = req.query;
     const walletLower = wallet.toLowerCase();
 
-    console.log(`📋 Fetching transactions for wallet: ${walletLower}`);
+    // Validate and parse pagination parameters
+    const limitInt = Math.max(1, parseInt(limit) || 200);
+    const offsetInt = Math.max(0, parseInt(offset) || 0);
 
-    // Get all transaction types
-    const [payments, redeems, transfers] = await Promise.all([
-      Payment.find({ wallet: walletLower }).sort({ createdAt: -1 }),
-      Redeem.find({ wallet: walletLower }).sort({ createdAt: -1 }).select('-bankDetails'),
+    console.log(`📋 Fetching transactions for wallet: ${walletLower} (limit: ${limitInt}, offset: ${offsetInt})`);
+
+    // Get all transaction types - limiting individual queries for performance
+    // and count total documents for accurate metadata
+    const [payments, redeems, transfers, paymentCount, redeemCount, transferCount] = await Promise.all([
+      Payment.find({ wallet: walletLower }).sort({ createdAt: -1 }).limit(limitInt + offsetInt),
+      Redeem.find({ wallet: walletLower }).sort({ createdAt: -1 }).select('-bankDetails').limit(limitInt + offsetInt),
       Transfer.find({
         $or: [{ from: walletLower }, { to: walletLower }]
-      }).sort({ createdAt: -1 })
+      }).sort({ createdAt: -1 }).limit(limitInt + offsetInt),
+      Payment.countDocuments({ wallet: walletLower }),
+      Redeem.countDocuments({ wallet: walletLower }),
+      Transfer.countDocuments({ $or: [{ from: walletLower }, { to: walletLower }] })
     ]);
 
     console.log(`  Payments: ${payments.length}, Redeems: ${redeems.length}, Transfers: ${transfers.length}`);
@@ -96,12 +105,19 @@ router.get('/transactions/:wallet', async (req, res) => {
     // Sort by date
     allTransactions.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-    console.log(`✅ Returning ${allTransactions.length} total transactions for ${walletLower}`);
+    // Apply pagination to the combined result
+    const paginatedTransactions = allTransactions.slice(offsetInt, offsetInt + limitInt);
+    const totalCount = paymentCount + redeemCount + transferCount;
+
+    console.log(`✅ Returning ${paginatedTransactions.length} transactions (from ${totalCount} total) for ${walletLower}`);
 
     res.json({
       success: true,
-      transactions: allTransactions,
-      count: allTransactions.length
+      transactions: paginatedTransactions,
+      totalCount,
+      count: paginatedTransactions.length,
+      limit: limitInt,
+      offset: offsetInt
     });
   } catch (error) {
     console.error('Get transactions error:', error);
