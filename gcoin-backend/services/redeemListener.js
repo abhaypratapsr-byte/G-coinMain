@@ -1,6 +1,6 @@
 const { ethers }   = require('ethers');
 const RedeemLedger = require('../models/RedeemLedger');
-const GCoinABI     = require('../abi/GCoin.json');
+const GCoinABI     = require('../abi.json');
 
 const startRedeemListener = () => {
   const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
