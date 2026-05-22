@@ -11,6 +11,7 @@ class BlockchainService {
     this.wallet = null;
     this.contract = null;
     this.initialized = false;
+    this.cachedDecimals = null;
   }
 
   async initialize() {
@@ -49,10 +50,23 @@ class BlockchainService {
     }
   }
 
-async getDecimals() {
-  await this.initialize();
-  return await this.contract.decimals();
-}
+  /**
+   * Get token decimals with caching to reduce RPC calls.
+   * Expected impact: Eliminates 1 RPC call per transaction/balance check after the first call.
+   */
+  async getDecimals() {
+    if (this.cachedDecimals !== null) return this.cachedDecimals;
+
+    await this.initialize();
+    try {
+      const decimals = await this.contract.decimals();
+      this.cachedDecimals = Number(decimals);
+      return this.cachedDecimals;
+    } catch (error) {
+      console.error('Error getting decimals:', error);
+      throw error;
+    }
+  }
 
   async getBalance(address) {
   await this.initialize();

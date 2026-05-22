@@ -53,12 +53,13 @@ router.get('/transactions/:wallet', async (req, res) => {
     console.log(`📋 Fetching transactions for wallet: ${walletLower}`);
 
     // Get all transaction types
+    // Using .lean() to get plain JavaScript objects and improve performance
     const [payments, redeems, transfers] = await Promise.all([
-      Payment.find({ wallet: walletLower }).sort({ createdAt: -1 }),
-      Redeem.find({ wallet: walletLower }).sort({ createdAt: -1 }).select('-bankDetails'),
+      Payment.find({ wallet: walletLower }).sort({ createdAt: -1 }).lean(),
+      Redeem.find({ wallet: walletLower }).sort({ createdAt: -1 }).select('-bankDetails').lean(),
       Transfer.find({
         $or: [{ from: walletLower }, { to: walletLower }]
-      }).sort({ createdAt: -1 })
+      }).sort({ createdAt: -1 }).lean()
     ]);
 
     console.log(`  Payments: ${payments.length}, Redeems: ${redeems.length}, Transfers: ${transfers.length}`);
@@ -94,7 +95,12 @@ router.get('/transactions/:wallet', async (req, res) => {
     ];
 
     // Sort by date
-    allTransactions.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    // Use numeric comparison for better performance
+    allTransactions.sort((a, b) => {
+      const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : new Date(a.createdAt).getTime();
+      const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : new Date(b.createdAt).getTime();
+      return dateB - dateA;
+    });
 
     console.log(`✅ Returning ${allTransactions.length} total transactions for ${walletLower}`);
 
